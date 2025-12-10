@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light mode — ConnectX www palette */
+  --background: 216 38% 98%;
+  --foreground: 213 17% 12%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 213 17% 12%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 213 17% 12%;
+
+  --primary: 201 72% 64%;
+  --primary-foreground: 0 0% 100%;
+  --primary-dark: 201 52% 43%;
+
+  --secondary: 216 38% 98%;
+  --secondary-foreground: 213 17% 12%;
+
+  --accent: 138 56% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --muted: 218 25% 92%;
+  --muted-foreground: 218 9% 46%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 218 25% 92%;
+  --border-soft: 220 20% 94%;
+  --input: 218 25% 92%;
+  --ring: 201 72% 64%;
+
+  --success: 138 56% 42%;
+  --warning: 45 96% 56%;
+  --info: 210 84% 70%;
+
+  --radius: 0.75rem;
+
+  /* Legacy aliases to keep older components working */
+  --text: var(--foreground);
+  --text2: var(--muted-foreground);
+  --bg: var(--background);
+  --surface: var(--card);
+  --surface2: var(--muted);
+}
+
+.dark {
+  /* Dark mode */
+  --background: 213 17% 12%;
+  --foreground: 216 38% 98%;
+
+  --card: 213 17% 16%;
+  --card-foreground: 216 38% 98%;
+
+  --popover: 213 17% 16%;
+  --popover-foreground: 216 38% 98%;
+
+  --primary: 201 72% 64%;
+  --primary-foreground: 213 17% 12%;
+  --primary-dark: 201 52% 50%;
+
+  --secondary: 213 17% 20%;
+  --secondary-foreground: 216 38% 98%;
+
+  --accent: 138 56% 42%;
+  --accent-foreground: 0 0% 100%;
+
+  --muted: 213 17% 20%;
+  --muted-foreground: 218 9% 60%;
+
+  --destructive: 0 62.8% 50%;
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 213 17% 25%;
+  --border-soft: 213 17% 28%;
+  --input: 213 17% 25%;
+  --ring: 201 72% 64%;
+
+  --success: 138 56% 42%;
+  --warning: 45 96% 56%;
+  --info: 210 84% 70%;
+
+  --radius: 0.75rem;
+
+  --text: var(--foreground);
+  --text2: var(--muted-foreground);
+  --bg: var(--background);
+  --surface: var(--card);
+  --surface2: var(--muted);
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}

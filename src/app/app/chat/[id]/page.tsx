@@ -343,8 +343,8 @@ export default function ConversationPage() {
                         </span>
                         <div className="leading-tight">
                           <p className="font-medium text-foreground/90">Media attachment</p>
-                          <p className="text-[12px] text-muted-foreground">
-                            {msg.body && msg.body.length > 120 ? `${msg.body.slice(0, 120)}…` : msg.body || "Unsupported media"}
+                          <p className="text-[12px] text-muted-foreground break-all">
+                            {msg.body && msg.body.length > 10 ? `${msg.body.slice(0, 10)}…` : msg.body || "Unsupported media"}
                           </p>
                         </div>
                       </div>

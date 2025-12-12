@@ -317,6 +317,12 @@ export default function ConversationPage() {
           <div className="space-y-3">
             {messages.map((msg) => {
               const isOutbound = msg.direction === "outbound";
+              const isMedia =
+                !msg.body ||
+                msg.body.includes("[media message]") ||
+                msg.body.startsWith("data:") ||
+                msg.body.startsWith("/9j/") ||
+                msg.body.length > 500;
               return (
                 <div
                   key={msg.id}
@@ -324,13 +330,27 @@ export default function ConversationPage() {
                 >
                   <div
                     className={clsx(
-                      "max-w-[70%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm",
+                      "max-w-[70%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm break-words",
                       isOutbound
                         ? "bg-primary/10 text-foreground rounded-br-sm ml-auto"
                         : "bg-[hsl(var(--card))] border border-border/40 text-foreground rounded-bl-sm mr-auto"
                     )}
                   >
-                    <p>{msg.body}</p>
+                    {isMedia ? (
+                      <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-foreground/80 text-xs font-medium">
+                          📎
+                        </span>
+                        <div className="leading-tight">
+                          <p className="font-medium text-foreground/90">Media attachment</p>
+                          <p className="text-[12px] text-muted-foreground">
+                            {msg.body && msg.body.length > 120 ? `${msg.body.slice(0, 120)}…` : msg.body || "Unsupported media"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.body}</p>
+                    )}
                     <div className={clsx("mt-1 text-[11px] text-muted-foreground", isOutbound ? "text-right" : "text-left")}>
                       {msg.sent_at ? new Date(msg.sent_at).toLocaleString() : "Pending send"}
                       {isOutbound && msg.status ? ` · ${msg.status}` : ""}

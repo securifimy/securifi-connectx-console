@@ -174,10 +174,15 @@ export async function apiGetConversations(
 
 export async function apiGetMessages(
   token: string,
-  conversationId: number
+  conversationId: number,
+  opts: { cursor?: string | null; limit?: number } = {}
 ) {
+  const query = new URLSearchParams();
+  if (opts.cursor) query.set("cursor", opts.cursor);
+  if (opts.limit) query.set("limit", String(opts.limit));
+
   const res = await fetch(
-    `${API_BASE}/api/v1/conversations/${conversationId}/messages`,
+    `${API_BASE}/api/v1/conversations/${conversationId}/messages${query.toString() ? `?${query.toString()}` : ""}`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

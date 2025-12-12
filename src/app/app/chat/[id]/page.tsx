@@ -41,6 +41,7 @@ interface Message {
   body: string;
   status: string;
   sent_at: string | null;
+  created_at?: string | null;
 }
 
 type ConversationUpdatePayload = {
@@ -65,6 +66,8 @@ export default function ConversationPage() {
   const conversationId = Number(params?.id);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -74,6 +77,9 @@ export default function ConversationPage() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const topSentinelRef = useRef<HTMLDivElement | null>(null);
+  const skipScrollRef = useRef(false);
   const aiEnabled = process.env.NEXT_PUBLIC_AI_FEATURES_ENABLED === "true";
 
   useEffect(() => {
@@ -89,8 +95,11 @@ export default function ConversationPage() {
       try {
         const convo = await apiGetConversation(authToken, conversationId);
         setConversation(convo);
-        const msgs = await apiGetMessages(authToken, conversationId);
+        const data = await apiGetMessages(authToken, conversationId, { limit: 20 });
+        const msgs = Array.isArray(data) ? data : data.messages;
+        const cursor = Array.isArray(data) ? null : data.nextCursor;
         setMessages(deduplicateMessages(msgs));
+        setNextCursor(cursor ?? null);
       } catch (err) {
         console.error("Failed to load conversation", err);
         if (isUnauthorized(err)) {
@@ -159,8 +168,29 @@ export default function ConversationPage() {
   }, [conversationId, token]);
 
   useEffect(() => {
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      return;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Infinite scroll (load older)
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting) {
+          void handleLoadOlder();
+        }
+      },
+      { root: messagesContainerRef.current, threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [nextCursor, loadingOlder, token]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -237,6 +267,33 @@ export default function ConversationPage() {
     }
   }
 
+  async function handleLoadOlder() {
+    if (!token || !conversation || !nextCursor || loadingOlder) return;
+    const container = messagesContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight ?? 0;
+    const prevScrollTop = container?.scrollTop ?? 0;
+    setLoadingOlder(true);
+    try {
+      const data = await apiGetMessages(token, conversation.id, { cursor: nextCursor, limit: 20 });
+      const older = Array.isArray(data) ? data : data.messages;
+      const cursor = Array.isArray(data) ? null : data.nextCursor;
+      skipScrollRef.current = true;
+      setMessages((prev) => deduplicateMessages([...older, ...prev]));
+      setNextCursor(cursor ?? null);
+      // Preserve scroll position after prepending
+      requestAnimationFrame(() => {
+        const newHeight = container?.scrollHeight ?? 0;
+        if (container) {
+          container.scrollTop = newHeight - prevScrollHeight + prevScrollTop;
+        }
+      });
+    } catch (err) {
+      console.error("Failed to load older messages", err);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
   if (loading || !conversation) {
     return (
       <WorkspaceShell activeNav="inbox">
@@ -300,7 +357,10 @@ export default function ConversationPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 bg-[hsl(var(--background))]">
+        <div
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto px-6 py-4 space-y-3 bg-[hsl(var(--background))]"
+        >
           <div className="rounded-xl border border-border/60 bg-[hsl(var(--card))] p-3">
             <ConversationSummary
               summary={conversation.summary}
@@ -315,6 +375,13 @@ export default function ConversationPage() {
           </div>
 
           <div className="space-y-3">
+            <div ref={topSentinelRef} className="h-1 w-full" />
+            {loadingOlder && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="h-4 w-4 rounded-full border-2 border-muted-foreground border-t-transparent animate-spin" />
+                Loading earlier messages…
+              </div>
+            )}
             {messages.map((msg) => {
               const isOutbound = msg.direction === "outbound";
               const isMedia =

@@ -249,7 +249,7 @@ export default function ConversationPage() {
 
   return (
     <WorkspaceShell activeNav="inbox" layout="chat-2col">
-      <section className="col-span-4 border-r border-border/60 bg-[hsl(var(--card))] h-[calc(100vh-64px)] overflow-y-auto px-4 py-4 space-y-3">
+      <section className="col-span-4 h-full border-r border-border/60 bg-[hsl(var(--card))] overflow-y-auto px-4 py-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-semibold text-foreground">Conversations</h2>
           <button
@@ -271,7 +271,7 @@ export default function ConversationPage() {
         </div>
       </section>
 
-      <section className="col-span-8 flex flex-col rounded-none border-l border-border/60 bg-[hsl(var(--card))] shadow-sm overflow-hidden">
+      <section className="col-span-8 h-full flex flex-col rounded-none border-l border-border/60 bg-[hsl(var(--card))] shadow-sm overflow-hidden">
         <header className="h-16 border-b border-border/40 flex items-center justify-between px-6 bg-[hsl(var(--muted))]/40">
           <div>
             <h1 className="text-[20px] font-semibold text-foreground">

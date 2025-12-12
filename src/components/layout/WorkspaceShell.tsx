@@ -22,7 +22,7 @@ export function WorkspaceShell({
         <Topbar variant="tenant" />
         <main className="flex-1 bg-[hsl(var(--background))]">
           {layout === "chat-2col" || layout === "chat-3col" ? (
-            <div className="h-full min-h-[calc(100vh-64px)] overflow-hidden">
+            <div className="h-[calc(100vh-64px)] max-h-[calc(100vh-64px)] overflow-hidden">
               <div className="grid grid-cols-12 h-full">{children}</div>
             </div>
           ) : (

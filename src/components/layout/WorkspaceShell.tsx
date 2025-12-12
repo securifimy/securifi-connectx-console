@@ -20,15 +20,13 @@ export function WorkspaceShell({
       <Sidebar variant="tenant" activeNav={activeNav} />
       <div className="flex-1 flex flex-col">
         <Topbar variant="tenant" />
-        <main className="flex-1 overflow-y-hidden bg-[hsl(var(--background))] pb-24">
+        <main className="flex-1 bg-[hsl(var(--background))]">
           {layout === "chat-2col" || layout === "chat-3col" ? (
-            <div className="h-full">
-              <div className="grid grid-cols-12 h-[calc(100vh-64px)]">
-                {children}
-              </div>
+            <div className="h-full min-h-[calc(100vh-64px)] overflow-hidden">
+              <div className="grid grid-cols-12 h-full">{children}</div>
             </div>
           ) : (
-            <div className="max-w-screen-xl mx-auto w-full px-6 py-10 pb-28 space-y-6 overflow-y-auto">
+            <div className="max-w-screen-xl mx-auto w-full px-6 py-10 space-y-6">
               {children}
             </div>
           )}

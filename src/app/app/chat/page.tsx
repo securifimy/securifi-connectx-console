@@ -146,7 +146,7 @@ export default function ConversationsListPage() {
 
   return (
     <WorkspaceShell activeNav="inbox" layout="default">
-      <div className="max-w-5xl h-[calc(100vh-160px)] flex flex-col space-y-4">
+      <div className="max-w-5xl flex flex-col space-y-4 min-h-[calc(100vh-220px)]">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-[20px] font-semibold text-foreground">Conversations</h2>
@@ -170,7 +170,7 @@ export default function ConversationsListPage() {
           </label>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1 pb-16">
+        <div className="flex-1 space-y-3 overflow-y-auto pr-1 pb-12">
           {loading && conversations.length === 0
             ? Array.from({ length: 4 }).map((_, idx) => (
                 <div

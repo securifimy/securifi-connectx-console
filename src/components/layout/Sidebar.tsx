@@ -66,10 +66,9 @@ export default function Sidebar({ variant = "tenant", activeNav }: SidebarProps)
 
       <nav className="flex-1 px-3 py-4 space-y-1">
         {items.map((item) => {
-          const active =
-            activeNav === item.id ||
-            pathname === item.href ||
-            pathname.startsWith(item.href + "/");
+          const active = activeNav
+            ? activeNav === item.id
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
             <Link

@@ -16,7 +16,7 @@ export function WorkspaceShell({
   layout?: LayoutMode;
 }) {
   return (
-    <div className="flex min-h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
+    <div className="flex min-h-full w-full bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
       <Sidebar variant="tenant" activeNav={activeNav} />
       <div className="flex-1 flex flex-col">
         <Topbar variant="tenant" />

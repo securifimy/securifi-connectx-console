@@ -104,16 +104,16 @@ export default function TenantSettingsPage() {
 
   return (
     <div className="max-w-lg space-y-4">
-      <div>
-        <h2 className="text-base font-semibold text-[var(--text)]">Workspace profile</h2>
-        <p className="text-xs text-[var(--text2)]">
-          This is how your Securifi Connect workspace appears to team members.
-        </p>
-      </div>
-
       {error && <div className="text-xs text-red-500">{error}</div>}
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-ui-border bg-white p-4 shadow-sm">
+      <form onSubmit={handleSubmit} className="rounded-xl border border-ui-border bg-white shadow-sm">
+        <div className="border-b border-ui-border px-4 py-4">
+          <p className="text-sm font-medium text-[var(--text)]">Workspace profile</p>
+          <p className="mt-1 text-xs text-[var(--text2)]">
+            This is how your Securifi Connect workspace appears to team members.
+          </p>
+        </div>
+        <div className="space-y-4 p-4">
         <div className="space-y-1">
           <label className="block text-xs font-medium text-[var(--text2)]">Name</label>
           <input
@@ -179,6 +179,7 @@ export default function TenantSettingsPage() {
             You don&apos;t have permission to edit workspace settings. Ask an admin or owner.
           </p>
         )}
+        </div>
       </form>
     </div>
   );

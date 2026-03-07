@@ -66,12 +66,12 @@ export default function AuditLogPage() {
 
   return (
     <div className="space-y-3">
-      <div>
-        <h2 className="text-base font-semibold text-[var(--text)]">Audit log</h2>
-        <p className="text-xs text-[var(--text2)]">Recent security-sensitive events (last 100 entries).</p>
-      </div>
-
-      <div className="border border-[var(--border)] rounded-lg overflow-hidden max-h-[480px] overflow-y-auto bg-[var(--surface2)]">
+      <div className="border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--surface2)]">
+        <div className="border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+          <p className="text-sm font-medium text-[var(--text)]">Audit log</p>
+          <p className="mt-1 text-xs text-[var(--text2)]">Recent security-sensitive events across the last 100 entries.</p>
+        </div>
+        <div className="max-h-[480px] overflow-y-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-[var(--surface)] text-xs uppercase text-[var(--text2)]">
             <tr>
@@ -107,6 +107,7 @@ export default function AuditLogPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

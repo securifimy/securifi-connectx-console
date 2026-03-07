@@ -49,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.className} min-h-screen bg-[var(--bg)] text-[var(--text)] flex flex-col`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="flex-1">{children}</div>
+          <div className="flex-1 min-h-0">{children}</div>
           <Footer />
         </ThemeProvider>
       </body>

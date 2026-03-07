@@ -16,6 +16,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [hydrateFromStorage]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.add("app-shell");
+    return () => {
+      document.body.classList.remove("app-shell");
+    };
+  }, []);
+
+  useEffect(() => {
     if (hydrated && !token) {
       router.replace("/login");
     }
@@ -30,5 +38,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   // Default shell; pages will wrap with WorkspaceShell to set activeNav.
-  return <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">{children}</div>;
+  return <div className="h-full min-h-0 bg-[var(--bg)] text-[var(--text)]">{children}</div>;
 }

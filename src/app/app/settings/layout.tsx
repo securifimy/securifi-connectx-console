@@ -9,21 +9,19 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
 
   const tabs = [
-    { href: "/app/settings/users", label: "Users" },
     { href: "/app/settings/tenant", label: "Workspace" },
     { href: "/app/settings/audit", label: "Audit log" },
   ];
 
   return (
-    <WorkspaceShell activeNav="settings">
+    <WorkspaceShell
+      activeNav="settings"
+      header={{
+        title: "Settings",
+        subtitle: "Manage workspace profile, audit visibility, and security controls.",
+      }}
+    >
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-          <div>
-            <h1 className="text-[20px] font-semibold text-[var(--text)]">Settings</h1>
-            <p className="text-sm text-[var(--text2)]">Manage workspace access, profile, and security.</p>
-          </div>
-        </div>
-
         <div className="flex gap-3 overflow-x-auto pb-1">
           {tabs.map((tab) => {
             const active = pathname?.startsWith(tab.href);

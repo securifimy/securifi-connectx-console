@@ -209,10 +209,32 @@ export async function apiGetConversation(
   return res.json();
 }
 
+export async function apiGetGroupParticipants(
+  token: string,
+  conversationId: number
+): Promise<{ participants: Array<{ jid: string; name: string }> }> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/conversations/${conversationId}/group_participants`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to load group participants");
+  }
+
+  return res.json();
+}
+
 export async function apiSendMessage(
   token: string,
   conversationId: number,
-  body: string
+  body: string,
+  clientMessageId?: string
 ) {
   const res = await fetch(
     `${API_BASE}/api/v1/conversations/${conversationId}/messages`,
@@ -222,7 +244,7 @@ export async function apiSendMessage(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, client_message_id: clientMessageId }),
     }
   );
   if (!res.ok) throw new Error("Failed to send message");
@@ -339,7 +361,8 @@ export async function apiGetChannelAccount(
 
 export async function apiStartChannelAccountSession(
   token: string,
-  channelAccountId: number
+  channelAccountId: number,
+  options: { forceRestart?: boolean } = {}
 ) {
   const res = await fetch(`${API_BASE}/api/v1/channel_accounts/${channelAccountId}/start`, {
     method: "POST",
@@ -347,7 +370,9 @@ export async function apiStartChannelAccountSession(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({
+      force_restart: options.forceRestart === true,
+    }),
   });
 
   if (!res.ok) throw new Error("Failed to start WhatsApp session");
@@ -649,7 +674,16 @@ export async function apiGetMe(token: string) {
   const res = await fetch(`${API_BASE}/api/v1/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Failed to load profile");
+  if (!res.ok) {
+    const error: Error & { status?: number; body?: string } = new Error("Failed to load profile");
+    error.status = res.status;
+    try {
+      error.body = await res.text();
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
   return res.json();
 }
 
@@ -657,7 +691,16 @@ export async function apiGetMembers(token: string, tenantId: number) {
   const res = await fetch(`${API_BASE}/api/v1/tenants/${tenantId}/memberships`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error("Failed to load members");
+  if (!res.ok) {
+    const error: Error & { status?: number; body?: string } = new Error("Failed to load members");
+    error.status = res.status;
+    try {
+      error.body = await res.text();
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
   return res.json();
 }
 

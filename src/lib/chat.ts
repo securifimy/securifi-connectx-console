@@ -23,3 +23,12 @@ export async function apiSendNewChat(
 
   return res.json();
 }
+
+export function formatPhoneFromExternalId(externalId?: string | null) {
+  if (!externalId) return null;
+  if (externalId.endsWith("@g.us")) return null;
+  const raw = externalId.includes("@") ? externalId.split("@")[0] : externalId;
+  const digits = raw.replace(/\D+/g, "");
+  if (!digits) return null;
+  return `+${digits}`;
+}

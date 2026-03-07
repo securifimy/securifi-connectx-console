@@ -45,14 +45,13 @@ export default function SuperadminApiLogsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">API Logs</h2>
-      {error && <div className="text-sm text-red-400">{error}</div>}
-      <div className="p-4 rounded-lg border border-slate-800 bg-slate-900 text-sm text-slate-100 overflow-auto">
+      {error && <div className="text-sm text-red-500">{error}</div>}
+      <div className="p-4 rounded-lg border border-border/60 bg-[hsl(var(--card))] text-sm text-foreground overflow-auto shadow-sm ring-1 ring-border/40">
         {loading ? (
-          <p className="text-slate-400 text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">Loading…</p>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
+            <thead className="text-xs uppercase text-muted-foreground border-b border-border/60">
               <tr>
                 <th className="px-3 py-2 text-left">Time</th>
                 <th className="px-3 py-2 text-left">Tenant</th>
@@ -64,20 +63,20 @@ export default function SuperadminApiLogsPage() {
             </thead>
             <tbody>
               {logs.map((l) => (
-                <tr key={l.id} className="border-b border-slate-800 align-top">
-                  <td className="px-3 py-2 text-slate-400 whitespace-nowrap">
+                <tr key={l.id} className="border-b border-border/60 align-top">
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                     {new Date(l.created_at).toLocaleString()}
                   </td>
                   <td className="px-3 py-2">{l.tenant_name || l.tenant_id || "—"}</td>
                   <td className="px-3 py-2">{l.http_method}</td>
-                  <td className="px-3 py-2 break-all text-slate-200">{l.endpoint}</td>
+                  <td className="px-3 py-2 break-all text-foreground">{l.endpoint}</td>
                   <td className="px-3 py-2">{l.status}</td>
-                  <td className="px-3 py-2 text-slate-400">{l.duration_ms ? `${Math.round(l.duration_ms)}ms` : "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{l.duration_ms ? `${Math.round(l.duration_ms)}ms` : "—"}</td>
                 </tr>
               ))}
               {logs.length === 0 && (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={6}>
+                  <td className="px-3 py-3 text-muted-foreground" colSpan={6}>
                     No API logs yet.
                   </td>
                 </tr>

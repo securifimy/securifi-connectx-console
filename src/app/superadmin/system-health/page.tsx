@@ -47,17 +47,19 @@ export default function SuperadminSystemHealthPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">System Health</h2>
-      {error && <div className="text-sm text-red-400">{error}</div>}
+      {error && <div className="text-sm text-red-500">{error}</div>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card) => (
-          <div key={card.label} className="p-4 rounded-lg border border-slate-800 bg-slate-900">
-            <p className="text-xs text-slate-400">{card.label}</p>
-            <p className="text-2xl font-semibold text-white">{card.value}</p>
+          <div
+            key={card.label}
+            className="p-4 rounded-lg border border-border/60 bg-[hsl(var(--card))] text-foreground shadow-sm ring-1 ring-border/40 transition-shadow hover:shadow-md"
+          >
+            <p className="text-xs text-muted-foreground">{card.label}</p>
+            <p className="text-2xl font-semibold text-foreground">{card.value}</p>
           </div>
         ))}
       </div>
-      {loading && <p className="text-sm text-slate-400">Refreshing…</p>}
+      {loading && <p className="text-sm text-muted-foreground">Refreshing…</p>}
     </div>
   );
 }

@@ -15,6 +15,14 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
   }, [hydrateFromStorage]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.classList.add("app-shell");
+    return () => {
+      document.body.classList.remove("app-shell");
+    };
+  }, []);
+
+  useEffect(() => {
     if (!token) {
       const redirectTo = pathname || "/superadmin";
       router.replace(`/login?redirect=${encodeURIComponent(redirectTo)}`);

@@ -62,9 +62,14 @@ export default function BillingPage() {
   }, [token]);
 
   return (
-    <WorkspaceShell activeNav="billing">
+    <WorkspaceShell
+      activeNav="billing"
+      header={{
+        title: "Billing",
+        subtitle: "Review plan limits, monthly usage, and invoice history for this workspace.",
+      }}
+    >
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-[var(--text)]">Billing & Usage</h1>
         {error && <p className="text-sm text-red-500">{error}</p>}
         {loading && <p className="text-sm text-[var(--text2)]">Loading…</p>}
 
@@ -106,7 +111,7 @@ export default function BillingPage() {
                     <td className="py-2">{inv.month}</td>
                     <td>{inv.total_messages?.toLocaleString() ?? 0}</td>
                     <td>{inv.total_api_calls?.toLocaleString() ?? 0}</td>
-                    <td>RM {(inv.amount_due_cents || 0 / 100).toFixed(2)}</td>
+                    <td>RM {((inv.amount_due_cents || 0) / 100).toFixed(2)}</td>
                     <td className="uppercase text-xs text-[var(--text2)]">{inv.status}</td>
                   </tr>
                 ))}

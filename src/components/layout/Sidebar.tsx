@@ -16,7 +16,7 @@ type SidebarProps = {
 const tenantNav = [
   { id: "inbox", href: "/app/chat", label: "Inbox", icon: Mail },
   { id: "channels", href: "/app/channels", label: "Channels", icon: Link2 },
-  { id: "team", href: "/app/settings/users", label: "Team Members", icon: Users },
+  { id: "team", href: "/app/team", label: "Team Members", icon: Users },
   { id: "settings", href: "/app/settings", label: "Workspace Settings", icon: Settings },
   { id: "billing", href: "/app/billing", label: "Billing & Usage", icon: CreditCard },
 ];
@@ -64,11 +64,15 @@ export default function Sidebar({ variant = "tenant", activeNav }: SidebarProps)
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {items.map((item) => {
+          const isRootMatch = pathname === item.href;
+          const isChildMatch = pathname.startsWith(item.href + "/");
           const active = activeNav
             ? activeNav === item.id
-            : pathname === item.href || pathname.startsWith(item.href + "/");
+            : item.href === "/superadmin"
+              ? isRootMatch
+              : isRootMatch || isChildMatch;
           const Icon = item.icon;
           return (
             <Link
@@ -97,7 +101,7 @@ export default function Sidebar({ variant = "tenant", activeNav }: SidebarProps)
         })}
       </nav>
 
-      <div className="absolute left-4 bottom-4">
+      <div className="mt-auto px-4 pb-4">
         <SidebarToggleMinimal collapsed={isCollapsed} onToggle={toggle} />
       </div>
     </aside>

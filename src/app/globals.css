@@ -97,3 +97,8 @@ body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
+
+body.app-shell {
+  height: 100vh;
+  overflow: hidden;
+}

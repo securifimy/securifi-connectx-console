@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/auth-store";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { WorkspaceShell } from "@/components/layout/WorkspaceShell";
 
 export default function OnboardingPage() {
   const { token, hydrateFromStorage } = useAuthStore();
@@ -25,67 +26,80 @@ export default function OnboardingPage() {
   if (!hydrated || !token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-300">
-        Loading onboarding…
+        Loading onboarding...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
-      <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6 shadow-xl">
-        <div>
-          <p className="text-xs uppercase tracking-wide text-slate-500">Welcome</p>
-          <h1 className="text-2xl font-semibold text-white mt-1">Let&apos;s get your workspace ready</h1>
-          <p className="text-sm text-slate-400 mt-2">
-            Follow these quick steps to start chatting from your WhatsApp channel.
-          </p>
-        </div>
+    <WorkspaceShell
+      activeNav="channels"
+      header={{
+        title: "Onboarding",
+        subtitle: "Set up your workspace, connect the first channel, and get the team ready to operate.",
+      }}
+    >
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="rounded-2xl border border-border/60 bg-[hsl(var(--card))] p-8 shadow-sm">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Welcome</p>
+            <h2 className="mt-2 text-2xl font-semibold text-foreground">Get the workspace ready</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Follow these steps to move from a fresh workspace to a send-ready channel and an operational team.
+            </p>
 
-        <ol className="space-y-3 text-sm">
-          <li className="flex gap-3 items-start">
-            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">1</span>
-            <div>
-              <p className="font-medium text-white">Set workspace profile</p>
-              <p className="text-slate-400">Add your workspace name, logo, and allowed origins in Settings → Workspace.</p>
-            </div>
-          </li>
-          <li className="flex gap-3 items-start">
-            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">2</span>
-            <div>
-              <p className="font-medium text-white">Connect WhatsApp</p>
-              <p className="text-slate-400">Create a new WhatsApp channel and scan the QR to link your phone.</p>
-            </div>
-          </li>
-          <li className="flex gap-3 items-start">
-            <span className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-semibold">3</span>
-            <div>
-              <p className="font-medium text-white">Invite your team</p>
-              <p className="text-slate-400">Send invites from Settings → Users so agents can join.</p>
-            </div>
-          </li>
-        </ol>
+            <ol className="mt-8 space-y-4 text-sm">
+              <li className="flex gap-3 items-start">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">1</span>
+                <div>
+                  <p className="font-medium text-foreground">Set workspace profile</p>
+                  <p className="mt-1 text-muted-foreground">Add the workspace name, logo, and allowed origins in Settings / Workspace.</p>
+                </div>
+              </li>
+              <li className="flex gap-3 items-start">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">2</span>
+                <div>
+                  <p className="font-medium text-foreground">Add a WhatsApp channel</p>
+                  <p className="mt-1 text-muted-foreground">Create a new channel, scan the QR, and wait until the session is healthy before sending.</p>
+                </div>
+              </li>
+              <li className="flex gap-3 items-start">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">3</span>
+                <div>
+                  <p className="font-medium text-foreground">Invite the team</p>
+                  <p className="mt-1 text-muted-foreground">Send invites from Team so agents can join the workspace and start handling conversations.</p>
+                </div>
+              </li>
+            </ol>
+          </section>
 
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/app/channels/new"
-            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Connect WhatsApp
-          </Link>
-          <Link
-            href="/app/settings/tenant"
-            className="inline-flex items-center rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:border-slate-500"
-          >
-            Open Settings
-          </Link>
-          <Link
-            href="/app/chat"
-            className="inline-flex items-center rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:border-slate-500"
-          >
-            Skip for now
-          </Link>
+          <aside className="space-y-4">
+            <section className="rounded-2xl border border-border/60 bg-[hsl(var(--card))] p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-foreground">Next action</h2>
+              <div className="mt-4 flex flex-col gap-3">
+                <Link
+                  href="/app/channels/new"
+                  className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-dark))]"
+                >
+                  Add WhatsApp channel
+                </Link>
+                <Link
+                  href="/app/settings/tenant"
+                  className="inline-flex items-center justify-center rounded-lg border border-border/60 bg-[hsl(var(--card))] px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
+                >
+                  Open workspace settings
+                </Link>
+                <Link
+                  href="/app/chat"
+                  className="inline-flex items-center justify-center rounded-lg border border-border/60 bg-[hsl(var(--card))] px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"
+                >
+                  Go to inbox
+                </Link>
+              </div>
+            </section>
+          </aside>
         </div>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

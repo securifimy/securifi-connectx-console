@@ -46,14 +46,13 @@ export default function SuperadminWebhookLogsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Webhook Logs</h2>
-      {error && <div className="text-sm text-red-400">{error}</div>}
-      <div className="p-4 rounded-lg border border-slate-800 bg-slate-900 text-sm text-slate-100 overflow-auto">
+      {error && <div className="text-sm text-red-500">{error}</div>}
+      <div className="p-4 rounded-lg border border-border/60 bg-[hsl(var(--card))] text-sm text-foreground overflow-auto shadow-sm ring-1 ring-border/40">
         {loading ? (
-          <p className="text-slate-400 text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">Loading…</p>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
+            <thead className="text-xs uppercase text-muted-foreground border-b border-border/60">
               <tr>
                 <th className="px-3 py-2 text-left">Time</th>
                 <th className="px-3 py-2 text-left">Tenant</th>
@@ -66,19 +65,19 @@ export default function SuperadminWebhookLogsPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-slate-800 align-top">
-                  <td className="px-3 py-2 text-slate-400 whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
+                <tr key={r.id} className="border-b border-border/60 align-top">
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td>
                   <td className="px-3 py-2">{r.tenant_name || r.tenant_id || "—"}</td>
                   <td className="px-3 py-2">{r.event || "—"}</td>
                   <td className="px-3 py-2">{r.status || "—"}</td>
                   <td className="px-3 py-2">{r.attempts ?? "—"}</td>
                   <td className="px-3 py-2">{r.response_status ?? "—"}</td>
-                  <td className="px-3 py-2 text-slate-400 break-all">{r.error_message || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground break-all">{r.error_message || "—"}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={7}>
+                  <td className="px-3 py-3 text-muted-foreground" colSpan={7}>
                     No webhook deliveries yet.
                   </td>
                 </tr>

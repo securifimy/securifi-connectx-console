@@ -46,14 +46,13 @@ export default function SuperadminTenantsPage() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">Tenants</h2>
-      {error && <div className="text-sm text-red-400">{error}</div>}
-      <div className="p-4 rounded-lg border border-slate-800 bg-slate-900 text-sm text-slate-100 overflow-auto">
+      {error && <div className="text-sm text-red-500">{error}</div>}
+      <div className="p-4 rounded-lg border border-border/60 bg-[hsl(var(--card))] text-sm text-foreground overflow-auto shadow-sm ring-1 ring-border/40">
         {loading ? (
-          <p className="text-slate-400 text-sm">Loading…</p>
+          <p className="text-muted-foreground text-sm">Loading…</p>
         ) : (
           <table className="min-w-full text-sm">
-            <thead className="text-xs uppercase text-slate-400 border-b border-slate-800">
+            <thead className="text-xs uppercase text-muted-foreground border-b border-border/60">
               <tr>
                 <th className="px-3 py-2 text-left">Name</th>
                 <th className="px-3 py-2 text-left">Slug</th>
@@ -67,22 +66,22 @@ export default function SuperadminTenantsPage() {
             </thead>
             <tbody>
               {rows.map((t) => (
-                <tr key={t.id} className="border-b border-slate-800">
+                <tr key={t.id} className="border-b border-border/60">
                   <td className="px-3 py-2">{t.name}</td>
-                  <td className="px-3 py-2 text-slate-400">{t.slug}</td>
-                  <td className="px-3 py-2 text-slate-400">{t.plan || "—"}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{t.slug}</td>
+                  <td className="px-3 py-2 text-muted-foreground">{t.plan || "—"}</td>
                   <td className="px-3 py-2">{t.status || "—"}</td>
                   <td className="px-3 py-2">{t.users_count ?? "—"}</td>
                   <td className="px-3 py-2">{t.channels_count ?? "—"}</td>
                   <td className="px-3 py-2">{t.messages_count ?? "—"}</td>
-                  <td className="px-3 py-2 text-slate-400">
+                  <td className="px-3 py-2 text-muted-foreground">
                     {t.created_at ? new Date(t.created_at).toLocaleDateString() : "—"}
                   </td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td className="px-3 py-3 text-slate-500" colSpan={8}>
+                  <td className="px-3 py-3 text-muted-foreground" colSpan={8}>
                     No tenants found.
                   </td>
                 </tr>

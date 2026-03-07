@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { formatPhoneFromExternalId } from "@/lib/chat";
 
 export type ConversationListItemProps = {
   conversation: {
@@ -10,6 +11,7 @@ export type ConversationListItemProps = {
     last_message_body?: string | null;
     status?: string | null;
     last_message_at?: string | null;
+    kind?: string | null;
     channel_account?: {
       display_name?: string | null;
       phone_number?: string | null;
@@ -30,6 +32,8 @@ export function ConversationListItem({ conversation, isActive, onClick }: Conver
     ? new Date(conversation.last_message_at).toLocaleString()
     : "";
   const status = (conversation.status || "open").toLowerCase();
+  const isGroup = conversation.kind === "group" || conversation.external_user_id?.endsWith("@g.us");
+  const phoneLabel = formatPhoneFromExternalId(conversation.external_user_id);
 
   return (
     <button
@@ -40,8 +44,18 @@ export function ConversationListItem({ conversation, isActive, onClick }: Conver
       )}
     >
       <div className="space-y-1 min-w-0">
-        <p className="text-[15px] font-semibold text-foreground truncate">{title}</p>
-        <p className="text-[12px] text-muted-foreground truncate">via {channelLabel}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="text-[15px] font-semibold text-foreground truncate">{title}</p>
+          {isGroup && (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-[1px] text-[10px] font-semibold text-foreground/80 border border-border/50">
+              Group
+            </span>
+          )}
+        </div>
+        <p className="text-[12px] text-muted-foreground truncate">
+          via {channelLabel}
+          {phoneLabel ? ` · ${phoneLabel}` : ""}
+        </p>
         <p className="text-[12px] text-muted-foreground truncate">{preview}</p>
       </div>
       <div className="text-right space-y-2 flex-shrink-0">

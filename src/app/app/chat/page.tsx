@@ -50,7 +50,7 @@ export default function ConversationsListPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideHandsetOnly, setHideHandsetOnly] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     const tenantId = tenant?.id;
@@ -107,59 +107,48 @@ export default function ConversationsListPage() {
     };
   }, [token, tenant?.id, load, hideHandsetOnly]);
 
-  // Infinite scroll observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry.isIntersecting && nextCursor && !loadingMore && !loading) {
-          const tenantId = tenant?.id;
-          if (!token || typeof tenantId !== "number") return;
-          setLoadingMore(true);
-          apiGetConversations(token, tenantId, { cursor: nextCursor, limit: 20 })
-            .then((data) => {
-              const convs: Conversation[] = (Array.isArray(data) ? data : data.conversations) as Conversation[];
-              const cursor = Array.isArray(data) ? null : data.nextCursor;
-              const filtered = convs
-                .filter((c: Conversation) => !isBroadcast(c))
-                .filter((c: Conversation) => !hideHandsetOnly || hasConsoleOutbound(c));
-              setConversations((prev) => sortConversations([...prev, ...filtered]));
-              setNextCursor(cursor ?? null);
-            })
-            .catch((err) => {
-              console.error("Failed to load more conversations", err);
-              setError("Unable to load more conversations. Tap to retry.");
-            })
-            .finally(() => setLoadingMore(false));
-        }
-      },
-      { threshold: 1.0 }
-    );
+  const loadMore = useCallback(async () => {
+    const tenantId = tenant?.id;
+    if (!token || typeof tenantId !== "number" || !nextCursor || loadingMore || loading) return;
+    setLoadingMore(true);
+    try {
+      const data = await apiGetConversations(token, tenantId, { cursor: nextCursor, limit: 20 });
+      const convs: Conversation[] = (Array.isArray(data) ? data : data.conversations) as Conversation[];
+      const cursor = Array.isArray(data) ? null : data.nextCursor;
+      const filtered = convs
+        .filter((c: Conversation) => !isBroadcast(c))
+        .filter((c: Conversation) => !hideHandsetOnly || hasConsoleOutbound(c));
+      setConversations((prev) => sortConversations([...prev, ...filtered]));
+      setNextCursor(cursor ?? null);
+    } catch (err) {
+      console.error("Failed to load more conversations", err);
+      setError("Unable to load more conversations. Tap to retry.");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [token, tenant?.id, nextCursor, loadingMore, loading, hideHandsetOnly]);
 
-    const node = sentinelRef.current;
-    if (node) observer.observe(node);
-    return () => {
-      if (node) observer.unobserve(node);
-      observer.disconnect();
-    };
-  }, [nextCursor, loadingMore, loading, token, tenant?.id, hideHandsetOnly]);
+  const handleListScroll = () => {
+    const container = listRef.current;
+    if (!container || !nextCursor || loadingMore || loading) return;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const nearBottom = scrollHeight - scrollTop - clientHeight < 120;
+    if (nearBottom) {
+      void loadMore();
+    }
+  };
 
   return (
-    <WorkspaceShell activeNav="inbox" layout="default">
-      <div className="max-w-5xl flex flex-col space-y-4 min-h-[calc(100vh-220px)]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-[20px] font-semibold text-foreground">Conversations</h2>
-            <p className="text-sm text-muted-foreground">Manage all chats in one place.</p>
-          </div>
-          <button
-            onClick={() => router.push("/app/chat/new")}
-            className="inline-flex items-center rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-dark))]"
-          >
-            + New Chat
-          </button>
-        </div>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+    <WorkspaceShell
+      activeNav="inbox"
+      layout="default"
+      header={{
+        title: "Inbox",
+        subtitle: "Review live conversations, filter the queue, and start a new chat from one workspace.",
+      }}
+    >
+      <div className="max-w-5xl h-full min-h-0 flex flex-col space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -168,9 +157,21 @@ export default function ConversationsListPage() {
             />
             Hide handset-only threads
           </label>
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex items-center gap-3">
+            {error && <p className="text-xs text-red-500">{error}</p>}
+            <button
+              onClick={() => router.push("/app/chat/new")}
+              className="inline-flex items-center rounded-lg bg-primary px-3.5 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-dark))]"
+            >
+              + New Chat
+            </button>
+          </div>
         </div>
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1 pb-12">
+        <div
+          ref={listRef}
+          onScroll={handleListScroll}
+          className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-1 pb-12"
+        >
           {loading && conversations.length === 0
             ? Array.from({ length: 4 }).map((_, idx) => (
                 <div
@@ -198,7 +199,6 @@ export default function ConversationsListPage() {
               <p className="text-[13px] text-muted-foreground mt-1">Start a new chat to begin messaging.</p>
             </div>
           )}
-          <div ref={sentinelRef} className="h-6" />
         </div>
       </div>
     </WorkspaceShell>

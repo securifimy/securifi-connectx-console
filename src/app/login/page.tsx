@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { token, setAuth, hydrateFromStorage } = useAuthStore();
+  const { token, user, setAuth, hydrateFromStorage } = useAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -20,10 +20,12 @@ function LoginForm() {
 
   useEffect(() => {
     if (token) {
-      const redirectTo = searchParams?.get("redirect") || "/app";
+      const redirectParam = searchParams?.get("redirect");
+      const isSuperadmin = Boolean((user as Record<string, unknown> | null)?.["is_superadmin"]);
+      const redirectTo = redirectParam || (isSuperadmin ? "/superadmin" : "/app");
       router.replace(redirectTo);
     }
-  }, [token, router, searchParams]);
+  }, [token, user, router, searchParams]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,7 +34,11 @@ function LoginForm() {
     try {
       const res = await apiLogin(email, password);
       setAuth(res.token, res.user, res.tenant);
-      const redirectTo = searchParams?.get("redirect") || "/app";
+      const redirectParam = searchParams?.get("redirect");
+      const isSuperadmin = Boolean(
+        (res.user as Record<string, unknown> | null)?.["is_superadmin"]
+      );
+      const redirectTo = redirectParam || (isSuperadmin ? "/superadmin" : "/app");
       router.replace(redirectTo);
     } catch (err: unknown) {
       if (err instanceof Error) {

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiCreateChannelAccount, apiStartChannelAccountSession } from "@/lib/api";
 import { useChannelWizard } from "@/lib/channel-wizard-store";
+import { WorkspaceShell } from "@/components/layout/WorkspaceShell";
+import Link from "next/link";
 
 export default function ChannelCreatePage() {
   const router = useRouter();
@@ -37,7 +39,7 @@ export default function ChannelCreatePage() {
         try {
           const result = await apiCreateChannelAccount(authToken, {
             kind: "whatsapp_unofficial",
-            display_name: "New WhatsApp Account",
+            display_name: "New WhatsApp Channel",
           });
 
         if (!cancelled && result?.id) {
@@ -79,20 +81,40 @@ export default function ChannelCreatePage() {
   ]);
 
   return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-center space-y-3">
-        <div className="h-10 w-10 rounded-full border-2 border-slate-600 border-t-white animate-spin mx-auto" />
-        <h1 className="text-lg font-semibold text-white">Creating your WhatsApp channel…</h1>
-        <p className="text-sm text-slate-400">This only takes a moment.</p>
-        {isLoading && (
-          <p className="text-xs text-slate-500">Initialising WhatsApp session…</p>
-        )}
-        {error && (
-          <p className="text-xs text-red-400">
-            {error}
-          </p>
-        )}
+    <WorkspaceShell
+      activeNav="channels"
+      header={{
+        title: "Create Channel",
+        subtitle: "Provision a new WhatsApp channel and prepare the secure linking session.",
+      }}
+    >
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <Link href="/app/channels" className="hover:text-foreground">
+              Channels
+            </Link>
+            <span>/</span>
+            <span className="text-foreground">Create channel</span>
+          </div>
+        </div>
+
+        <section className="rounded-2xl border border-border/60 bg-[hsl(var(--card))] p-8 shadow-sm">
+          <div className="flex flex-col items-center text-center">
+            <div className="h-10 w-10 rounded-full border-2 border-border/70 border-t-primary animate-spin" />
+            <h2 className="mt-4 text-xl font-semibold text-foreground">Creating your WhatsApp channel...</h2>
+            <p className="mt-2 text-sm text-muted-foreground">This usually takes a few seconds.</p>
+            {isLoading && (
+              <p className="mt-3 text-xs text-muted-foreground">Initialising WhatsApp session...</p>
+            )}
+            {error && (
+              <p className="mt-3 text-xs text-red-600">
+                {error}
+              </p>
+            )}
+          </div>
+        </section>
       </div>
-    </div>
+    </WorkspaceShell>
   );
 }

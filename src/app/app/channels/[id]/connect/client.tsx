@@ -37,8 +37,6 @@ export default function ConnectChannelClient({ channelAccountId }: Props) {
       completeHref={`/app/channels/${numericId}`}
       connectedMessage="WhatsApp is linked and healthy. Returning you to the channel dashboard."
       startOnMount
-      forceRestartOnMount
-      autoRecoverMissingQr
     />
   );
 }

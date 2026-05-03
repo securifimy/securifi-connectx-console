@@ -47,8 +47,13 @@ type Props = {
   connectedMessage: string;
   startOnMount?: boolean;
   forceRestartOnMount?: boolean;
-  autoRecoverMissingQr?: boolean;
 };
+
+// User-triggered force-restart wipes saved tokens and respawns chromium, which
+// takes ~10-15s to render the next QR. Lock the restart button for this long
+// after each click so rage-clicks don't pile up multiple destructive restarts
+// (each one wiping the in-flight QR generation from the prior click).
+const FORCE_RESTART_COOLDOWN_MS = 30000;
 
 function normalizeQr(value?: string | null) {
   if (!value) return null;
@@ -189,7 +194,6 @@ export function ChannelConnectExperience({
   connectedMessage,
   startOnMount = false,
   forceRestartOnMount = false,
-  autoRecoverMissingQr = false,
 }: Props) {
   const router = useRouter();
   const { token } = useAuthStore();
@@ -200,10 +204,11 @@ export function ChannelConnectExperience({
   const [pollError, setPollError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [restartCooldownUntil, setRestartCooldownUntil] = useState<number | null>(null);
+  const [, setCooldownTick] = useState(0);
   const redirectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasQueuedRedirectRef = useRef(false);
   const hasRefreshedAccountOnConnectRef = useRef(false);
-  const autoRecoveryTriggeredRef = useRef(false);
 
   const navigateToComplete = useCallback(() => {
     router.replace(completeHref);
@@ -333,32 +338,19 @@ export function ChannelConnectExperience({
     };
   }, [stage, loadAccount, navigateToComplete]);
 
+  // Tick once per second while a restart cooldown is active so the button label
+  // can show the live countdown. Auto-clears the cooldown when expired.
   useEffect(() => {
-    if (!autoRecoverMissingQr) {
-      return;
-    }
-
-    if (stage === "scan" || stage === "connected") {
-      autoRecoveryTriggeredRef.current = false;
-      return;
-    }
-
-    if (autoRecoveryTriggeredRef.current || isStarting || qr || session?.connected) {
-      return;
-    }
-
-    if (stage !== "connecting" && stage !== "starting") {
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      autoRecoveryTriggeredRef.current = true;
-      setActionError("The engine is taking too long to produce a QR. Restarting the secure link once.");
-      void startSession(true, true);
-    }, 12000);
-
-    return () => clearTimeout(timeout);
-  }, [autoRecoverMissingQr, isStarting, qr, session?.connected, stage, startSession]);
+    if (!restartCooldownUntil) return;
+    const interval = setInterval(() => {
+      if (Date.now() >= restartCooldownUntil) {
+        setRestartCooldownUntil(null);
+      } else {
+        setCooldownTick((t) => t + 1);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [restartCooldownUntil]);
 
   const steps = [
     {
@@ -493,14 +485,33 @@ export function ChannelConnectExperience({
               )}
 
               <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => void startSession(true, true)}
-                  disabled={isStarting}
-                  className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-dark))] disabled:opacity-60"
-                >
-                  {isStarting ? "Refreshing session..." : stage === "scan" ? "Refresh QR" : "Restart session"}
-                </button>
+                {(() => {
+                  const cooldownSecondsLeft = restartCooldownUntil
+                    ? Math.max(0, Math.ceil((restartCooldownUntil - Date.now()) / 1000))
+                    : 0;
+                  const inCooldown = cooldownSecondsLeft > 0;
+                  const onRestartClick = () => {
+                    setRestartCooldownUntil(Date.now() + FORCE_RESTART_COOLDOWN_MS);
+                    void startSession(true, true);
+                  };
+                  const label = isStarting
+                    ? "Restarting..."
+                    : inCooldown
+                    ? `Wait ${cooldownSecondsLeft}s before retry`
+                    : stage === "scan"
+                    ? "Refresh QR"
+                    : "Restart session";
+                  return (
+                    <button
+                      type="button"
+                      onClick={onRestartClick}
+                      disabled={isStarting || inCooldown}
+                      className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-[hsl(var(--primary-dark))] disabled:opacity-60"
+                    >
+                      {label}
+                    </button>
+                  );
+                })()}
                 <Link
                   href={backHref}
                   className="inline-flex items-center rounded-lg border border-border/60 bg-[hsl(var(--card))] px-4 py-2 text-sm font-medium text-foreground shadow-sm hover:bg-muted"

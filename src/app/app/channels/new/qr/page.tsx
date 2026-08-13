@@ -22,8 +22,8 @@ export default function ChannelQrPage() {
   return (
     <ChannelConnectExperience
       channelAccountId={channelAccountId}
-      title="Connect WhatsApp channel"
-      subtitle="Scan the QR code from your phone and keep this page open while the workspace waits for a fully send-ready session."
+      title="Link WhatsApp"
+      subtitle="Enter the code on the phone you are linking, and keep this page open while the workspace waits for a fully send-ready session."
       contextLabel="New channel setup"
       backHref="/app/channels"
       backLabel="Back to channels"

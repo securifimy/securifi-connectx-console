@@ -417,10 +417,16 @@ export async function apiGetChannelAccount(
   return res.json();
 }
 
+/**
+ * Starts a linking session. Passing `phoneNumber` asks for an 8-character code
+ * the user types into WhatsApp instead of a QR to scan — the sturdier of the
+ * two, since a QR sequence expires in about two minutes while a typed code
+ * lasts far longer and survives a page reload.
+ */
 export async function apiStartChannelAccountSession(
   token: string,
   channelAccountId: number,
-  options: { forceRestart?: boolean } = {}
+  options: { forceRestart?: boolean; phoneNumber?: string } = {}
 ) {
   const res = await fetch(`${API_BASE}/api/v1/channel_accounts/${channelAccountId}/start`, {
     method: "POST",
@@ -430,6 +436,7 @@ export async function apiStartChannelAccountSession(
     },
     body: JSON.stringify({
       force_restart: options.forceRestart === true,
+      ...(options.phoneNumber ? { phone_number: options.phoneNumber } : {}),
     }),
   });
 

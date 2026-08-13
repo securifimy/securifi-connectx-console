@@ -98,8 +98,12 @@ function extractPushname(account?: AccountSummary | null, host?: Record<string, 
   return null;
 }
 
-function deriveStage(session: SessionStatus | null, qr: string | null) {
+function deriveStage(session: SessionStatus | null, qr: string | null, pairingCode: string | null) {
   if (session?.connected) return "connected";
+  // A code takes precedence over a QR: it is what the user was offered, it
+  // outlives QR rotation, and showing both would ask them to choose between two
+  // things that do the same job.
+  if (pairingCode) return "code";
   if (qr || session?.qr_present) return "scan";
 
   const status = String(session?.status || "").toLowerCase();
@@ -116,6 +120,8 @@ function stageLabel(stage: string) {
   switch (stage) {
     case "connected":
       return "Connected";
+    case "code":
+      return "Enter code";
     case "scan":
       return "Scan QR";
     case "connecting":
@@ -133,6 +139,7 @@ function stagePill(stage: string) {
   switch (stage) {
     case "connected":
       return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+    case "code":
     case "scan":
     case "connecting":
       return "bg-amber-50 text-amber-700 border border-amber-100";
@@ -148,6 +155,8 @@ function stageHeadline(stage: string) {
   switch (stage) {
     case "connected":
       return "Link complete";
+    case "code":
+      return "Type this code into WhatsApp";
     case "scan":
       return "Scan this QR code";
     case "connecting":
@@ -165,6 +174,8 @@ function stageDescription(stage: string) {
   switch (stage) {
     case "connected":
       return "WhatsApp is linked and the session is ready to use.";
+    case "code":
+      return "On the phone you are linking: WhatsApp \u2192 Settings \u2192 Linked Devices \u2192 Link a device \u2192 Link with phone number.";
     case "scan":
       return "Open WhatsApp on your phone, go to Linked Devices, and scan the QR code.";
     case "connecting":
@@ -200,6 +211,7 @@ export function ChannelConnectExperience({
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [session, setSession] = useState<SessionStatus | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [loadingAccount, setLoadingAccount] = useState(true);
   const [pollError, setPollError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -284,6 +296,7 @@ export function ChannelConnectExperience({
         setSession(statusRes);
         setPollError(null);
         setQr(statusRes?.connected ? null : normalizeQr(qrRes?.qr));
+        setPairingCode(statusRes?.connected ? null : qrRes?.pairing_code || null);
       } catch (err) {
         console.error("Failed to poll connect state", err);
         if (!cancelled) {
@@ -301,7 +314,7 @@ export function ChannelConnectExperience({
     };
   }, [token, channelAccountId]);
 
-  const stage = useMemo(() => deriveStage(session, qr), [session, qr]);
+  const stage = useMemo(() => deriveStage(session, qr, pairingCode), [session, qr, pairingCode]);
   const detectedPhone = useMemo(() => extractPhone(account, session?.host || null), [account, session?.host]);
   const detectedPushname = useMemo(() => extractPushname(account, session?.host || null), [account, session?.host]);
 
@@ -426,7 +439,28 @@ export function ChannelConnectExperience({
               </div>
 
               <div className="rounded-2xl border border-border/60 bg-[hsl(var(--background))]/85 p-6 shadow-sm">
-                {stage === "scan" && qr ? (
+                {stage === "code" && pairingCode ? (
+                  <div className="flex flex-col items-center gap-5 text-center">
+                    {/* Spaced and wide-tracked because it is transcribed by
+                        hand onto a phone, one character at a time. */}
+                    <p
+                      className="rounded-2xl border border-border/60 bg-[hsl(var(--card))] px-6 py-5 font-mono text-4xl font-semibold tracking-[0.35em] text-foreground shadow-sm"
+                      aria-label={`Pairing code ${pairingCode.split("").join(" ")}`}
+                    >
+                      {pairingCode}
+                    </p>
+                    <div className="max-w-md space-y-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Type this on the phone you are linking.
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        WhatsApp → Settings → Linked Devices → Link a device → Link with phone
+                        number. Keep this tab open; the workspace continues on its own once
+                        WhatsApp confirms.
+                      </p>
+                    </div>
+                  </div>
+                ) : stage === "scan" && qr ? (
                   <div className="flex flex-col items-center gap-5 text-center">
                     <div className="rounded-[28px] border border-border/60 bg-white p-4 shadow-lg shadow-sky-100/50">
                       <Image
@@ -598,8 +632,10 @@ export function ChannelConnectExperience({
                   <span className="font-medium text-foreground">{session?.raw_status || "n/a"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">QR available</span>
-                  <span className="font-medium text-foreground">{qr ? "yes" : "no"}</span>
+                  <span className="text-muted-foreground">Linking credential</span>
+                  <span className="font-medium text-foreground">
+                    {pairingCode ? "code" : qr ? "qr" : "none"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Account status</span>

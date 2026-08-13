@@ -179,3 +179,56 @@ describe("opening a sealed message", () => {
     expect(new TextDecoder().decode(openEnvelope(b.privateKey, b.publicKey, envelope)!)).toBe("shared with both");
   });
 });
+
+// The property that actually matters: an envelope produced by the Rust engine
+// opens in the browser. Everything above proves the two sides agree on the
+// primitives and that this file agrees with itself — neither of which would
+// stop a whole-envelope mismatch from making every stored message unreadable.
+//
+// This fixture is byte-identical to the one in
+// engine-rs/crates/connect-crypto/tests/fixtures/envelope_v1.json, which the
+// Rust side opens in its own test. Neither implementation can drift without one
+// of the two failing. Regenerate with:
+//   cargo test -p connect-crypto --test interop emit_fixture -- --ignored --nocapture
+describe("opening an envelope sealed by engine-rs", () => {
+  const FIXTURE_PRIVATE = "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw=";
+  const FIXTURE_PUBLIC = "u1D/noKldM+/gg6X9g+5wUPsdBXPUU+M/Zjv9Z4FlhQ=";
+  const FIXTURE_PLAINTEXT = "the customer's private message";
+
+  // Sealed by seal_for() in Rust, not by any JavaScript.
+  const fixture: Envelope = {
+    v: 1,
+    ctx: "message-body",
+    n: "HSkwSw2rv3uAwEQFqQ127LJ2WmB+r7fu",
+    ct: "lIaP32QY+1yc/r/IZ9+XzlddbEmmoIWtWXnpgn1zZMpZVEeQtCQyrxv3PaUVkQ==",
+    recipients: [
+      {
+        kid: "1etLcUFKlyuthcOg75wNIA==",
+        epk: "19FdBnTnlnrJhRf86iwiGAlJLpcme5wqbrbHNg4hcH8=",
+        wn: "4vMJItCtbYpr970RI9sELMSD35ZEAzSj",
+        k: "hO243ujZs6ptcqSl6zEWM6slo13Jk6dAtyquXMSjfz3IXLX0UTof/GxMTy4ivLRh",
+      },
+    ],
+  };
+
+  it("reads the plaintext the Rust engine sealed", () => {
+    const opened = openEnvelope(b64decode(FIXTURE_PRIVATE), b64decode(FIXTURE_PUBLIC), fixture);
+
+    expect(opened).not.toBeNull();
+    expect(new TextDecoder().decode(opened!)).toBe(FIXTURE_PLAINTEXT);
+  });
+
+  it("refuses the same envelope with an unrelated key", () => {
+    const stranger = generateKeypair();
+
+    // The kid will not match, so this is the "not sealed for you" path.
+    expect(openEnvelope(stranger.privateKey, stranger.publicKey, fixture)).toBeNull();
+  });
+
+  it("refuses the fixture when the private key does not match its public key", () => {
+    const stranger = generateKeypair();
+
+    // kid matches so the entry is found, but the ECDH differs — the tag must fail.
+    expect(() => openEnvelope(stranger.privateKey, b64decode(FIXTURE_PUBLIC), fixture)).toThrow();
+  });
+});

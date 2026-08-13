@@ -1,6 +1,8 @@
 "use client";
 
 import clsx from "clsx";
+import { resolveMessageBody } from "@/lib/crypto/message";
+import type { Envelope } from "@/lib/crypto/vault";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
@@ -42,6 +44,9 @@ interface Message {
   id: number;
   direction: string;
   body: string;
+  /** Present when the engine sealed this message; see lib/crypto. */
+  sealed_body?: Envelope | null;
+  encrypted?: boolean;
   status: string;
   sent_at: string | null;
   created_at?: string | null;
@@ -503,12 +508,18 @@ export default function ConversationPage() {
                       : isOutbound
                         ? "Pending send"
                         : "Received";
+              // Resolve before the media heuristic: a sealed message has an
+              // empty `body`, so running the heuristic on it would label every
+              // encrypted message as "Media attachment".
+              const resolved = resolveMessageBody(msg);
+              const text = resolved.text;
               const isMedia =
-                !msg.body ||
-                msg.body.includes("[media message]") ||
-                msg.body.startsWith("data:") ||
-                msg.body.startsWith("/9j/") ||
-                msg.body.length > 500;
+                resolved.kind === "readable" &&
+                (!text ||
+                  text.includes("[media message]") ||
+                  text.startsWith("data:") ||
+                  text.startsWith("/9j/") ||
+                  text.length > 500);
               return (
                 <div
                   key={msg.id}
@@ -535,12 +546,21 @@ export default function ConversationPage() {
                         <div className="leading-tight">
                           <p className="font-medium text-foreground/90">Media attachment</p>
                           <p className="text-[12px] text-muted-foreground max-w-[220px] truncate">
-                            {msg.body && msg.body.length > 10 ? `${msg.body.slice(0, 10)}…` : msg.body || "Unsupported media"}
+                            {text && text.length > 10 ? `${text.slice(0, 10)}…` : text || "Unsupported media"}
                           </p>
                         </div>
                       </div>
                     ) : (
-                      <p className="whitespace-pre-wrap">{msg.body}</p>
+                      <p
+                        className={clsx(
+                          "whitespace-pre-wrap",
+                          resolved.kind !== "readable" && "italic text-muted-foreground"
+                        )}
+                      >
+                        {resolved.kind === "locked" && "🔒 "}
+                        {resolved.kind === "corrupt" && "⚠️ "}
+                        {text}
+                      </p>
                     )}
                     <div className={clsx("mt-1 text-[11px] text-muted-foreground", isOutbound ? "text-right" : "text-left")}>
                       {timestampText}

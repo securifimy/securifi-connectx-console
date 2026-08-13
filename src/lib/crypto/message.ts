@@ -14,7 +14,7 @@
 // from one that was never sent, and that is the failure this whole scheme is
 // supposed to make impossible.
 
-import { openEnvelope, type Envelope } from "./vault";
+import { openEnvelope, sealFor, b64decode, type Envelope } from "./vault";
 import { currentIdentity } from "./session";
 
 export type SealedMessage = {
@@ -72,3 +72,44 @@ export function resolveMessageBody(
 export function isSealed(message: SealedMessage): boolean {
   return Boolean(message.sealed_body);
 }
+
+/**
+ * Seals a reply twice before it leaves the browser: once to everyone who may
+ * read the conversation, and once to the engine that has to hand the words to
+ * WhatsApp. Rails carries both and can open neither.
+ *
+ * Sealing needs public keys only, so this works while the browser is still
+ * locked — you can answer a conversation you cannot yet read back.
+ *
+ * Both failures below refuse rather than fall back to plaintext. Falling back
+ * would send the message, look like success, and quietly break the promise the
+ * conversation is marked with, which is worse than not sending.
+ */
+export function sealReply(
+  text: string,
+  keys: { readers: string[]; engineKey: string | null },
+): { sealed_body: Envelope; transmit_body: Envelope } {
+  if (!keys.engineKey) {
+    throw new Error(
+      "This conversation is private and the engine has no key to receive a sealed reply, so nothing was sent.",
+    );
+  }
+  if (keys.readers.length === 0) {
+    throw new Error(
+      "This conversation is private and nobody here has enrolled an encryption key, so the reply could never be read back. Nothing was sent.",
+    );
+  }
+
+  const plaintext = new TextEncoder().encode(text);
+
+  return {
+    sealed_body: sealFor(keys.readers.map(b64decode), plaintext, HISTORY_CTX),
+    transmit_body: sealFor([b64decode(keys.engineKey)], plaintext, TRANSMIT_CTX),
+  };
+}
+
+// The two envelopes carry different contexts so they cannot stand in for each
+// other: the engine refuses a history envelope offered for transmission. Must
+// match http.rs and callbacks.rs in engine-rs.
+const HISTORY_CTX = "message-body";
+const TRANSMIT_CTX = "message-transmit";

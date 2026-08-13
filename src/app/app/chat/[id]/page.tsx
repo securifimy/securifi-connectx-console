@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { resolveMessageBody } from "@/lib/crypto/message";
+import { resolveMessageBody, sealReply } from "@/lib/crypto/message";
 import { ReaderKeyGate } from "@/components/crypto/ReaderKeyGate";
 import type { Envelope } from "@/lib/crypto/vault";
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import {
   apiSuggestReply,
   apiGetConversations,
   apiGetGroupParticipants,
+  apiGetConversationReaderKeys,
 } from "@/lib/api";
 import { formatPhoneFromExternalId } from "@/lib/chat";
 import { getCable } from "@/lib/cable";
@@ -88,6 +89,7 @@ export default function ConversationPage() {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [participantMap, setParticipantMap] = useState<Record<string, string>>({});
+  const [sendError, setSendError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const skipScrollRef = useRef(false);
@@ -261,11 +263,34 @@ export default function ConversationPage() {
     };
     setMessages((prev) => [...prev, optimistic]);
     setNewMessage("");
+    setSendError(null);
 
     try {
-      await apiSendMessage(token, conversation.id, optimistic.body, clientMessageId);
+      // Asked per send rather than cached: a colleague who enrolled a key a
+      // minute ago must be able to read this reply, and a stale list would
+      // silently leave them out of their own conversation.
+      const keys = await apiGetConversationReaderKeys(token, conversation.id);
+
+      const payload =
+        keys.privacy === "private"
+          ? sealReply(optimistic.body, {
+              readers: keys.readers.map((r) => r.public_key),
+              engineKey: keys.engine_public_key,
+            })
+          : { body: optimistic.body };
+
+      await apiSendMessage(token, conversation.id, payload, clientMessageId);
     } catch (err) {
       console.error("Failed to send", err);
+      // Said out loud, on screen. A reply that was refused for a key problem
+      // looks exactly like one that was sent, and the agent would carry on
+      // believing the customer had been answered.
+      setSendError(err instanceof Error ? err.message : "The message could not be sent.");
+      setMessages((prev) =>
+        prev.map((m) =>
+          getClientMessageId(m) === clientMessageId ? { ...m, status: "error", sent_at: null } : m
+        )
+      );
     }
   }
 
@@ -597,6 +622,11 @@ export default function ConversationPage() {
         )}
 
         <form onSubmit={handleSend} className="border-t border-border/40 bg-[hsl(var(--card))] px-6 py-4">
+          {sendError && (
+            <p className="mb-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {sendError}
+            </p>
+          )}
           <div className="flex items-end gap-3">
             <textarea
               rows={1}

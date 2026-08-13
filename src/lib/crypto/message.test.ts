@@ -1,29 +1,20 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { resolveMessageBody, isSealed } from "./message";
-import { generateKeypair, keyId, b64encode, b64decode, type Envelope } from "./vault";
+import { resolveMessageBody, isSealed, sealReply } from "./message";
+import {
+  generateKeypair,
+  keyId,
+  b64encode,
+  b64decode,
+  openEnvelope,
+  sealFor as realSealFor,
+  type Envelope,
+} from "./vault";
 import { enroll, unlock, lock, isUnlocked, rewrap, currentIdentity } from "./session";
-import { x25519 } from "@noble/curves/ed25519.js";
-import { xchacha20poly1305 } from "@noble/ciphers/chacha.js";
-import { hkdf } from "@noble/hashes/hkdf.js";
-import { sha256 } from "@noble/hashes/sha2.js";
 
+// The shipped sealing path, not a copy of it: a local re-implementation would
+// keep these tests green after vault.ts drifted away from it.
 function sealFor(recipients: Uint8Array[], plaintext: string, ctx = "message-body"): Envelope {
-  const enc = new TextEncoder();
-  const dek = crypto.getRandomValues(new Uint8Array(32));
-  const nonce = crypto.getRandomValues(new Uint8Array(24));
-  const ct = xchacha20poly1305(dek, nonce, enc.encode(ctx)).encrypt(enc.encode(plaintext));
-
-  const wrapped = recipients.map((rpk) => {
-    const esk = x25519.utils.randomSecretKey();
-    const epk = x25519.getPublicKey(esk);
-    const shared = x25519.getSharedSecret(esk, rpk);
-    const wrapKey = hkdf(sha256, shared, new Uint8Array([...epk, ...rpk]), enc.encode(`securifi-connect/wrap/v1/${ctx}`), 32);
-    const kid = keyId(rpk);
-    const wn = crypto.getRandomValues(new Uint8Array(24));
-    return { kid, epk: b64encode(epk), wn: b64encode(wn), k: b64encode(xchacha20poly1305(wrapKey, wn, enc.encode(kid)).encrypt(dek)) };
-  });
-
-  return { v: 1, ctx, n: b64encode(nonce), ct: b64encode(ct), recipients: wrapped };
+  return realSealFor(recipients, new TextEncoder().encode(plaintext), ctx);
 }
 
 const identityFor = (kp: { privateKey: Uint8Array; publicKey: Uint8Array }) => ({
@@ -156,5 +147,59 @@ describe("the reader session", () => {
     expect(isUnlocked()).toBe(false);
     const me = generateKeypair();
     expect(resolveMessageBody({ sealed_body: sealFor([me.publicKey], "x") } as never).kind).toBe("locked");
+  });
+});
+
+describe("sealing a reply before it leaves the browser", () => {
+  const engine = generateKeypair();
+  const ali = generateKeypair();
+  const siti = generateKeypair();
+
+  const keys = {
+    readers: [ali.publicKey, siti.publicKey].map(b64encode),
+    engineKey: b64encode(engine.publicKey),
+  };
+
+  it("gives the engine a copy it can open and the readers one they can open", () => {
+    const { sealed_body, transmit_body } = sealReply("boleh, saya hantar", keys);
+
+    expect(new TextDecoder().decode(openEnvelope(engine.privateKey, engine.publicKey, transmit_body)!))
+      .toBe("boleh, saya hantar");
+
+    for (const reader of [ali, siti]) {
+      expect(new TextDecoder().decode(openEnvelope(reader.privateKey, reader.publicKey, sealed_body)!))
+        .toBe("boleh, saya hantar");
+    }
+  });
+
+  // The engine may transmit; it must not become a permanent reader of history.
+  it("does not let the engine open the history copy", () => {
+    const { sealed_body } = sealReply("private", keys);
+
+    expect(openEnvelope(engine.privateKey, engine.publicKey, sealed_body)).toBeNull();
+  });
+
+  it("does not let a reader open the transmit copy", () => {
+    const { transmit_body } = sealReply("private", keys);
+
+    expect(openEnvelope(ali.privateKey, ali.publicKey, transmit_body)).toBeNull();
+  });
+
+  it("marks the two envelopes so they cannot stand in for each other", () => {
+    const { sealed_body, transmit_body } = sealReply("x", keys);
+
+    expect(sealed_body.ctx).toBe("message-body");
+    expect(transmit_body.ctx).toBe("message-transmit");
+  });
+
+  // Both refusals matter more than they look: falling back to plaintext would
+  // send the message, report success, and break the promise the conversation
+  // carries — silently.
+  it("refuses to send when the engine has no key to receive it", () => {
+    expect(() => sealReply("x", { ...keys, engineKey: null })).toThrow(/engine has no key/i);
+  });
+
+  it("refuses to send when nobody could ever read it back", () => {
+    expect(() => sealReply("x", { ...keys, readers: [] })).toThrow(/nobody/i);
   });
 });

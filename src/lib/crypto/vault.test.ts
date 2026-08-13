@@ -5,6 +5,7 @@ import {
   wrapPrivateKey,
   unwrapPrivateKey,
   openEnvelope,
+  sealFor as realSealFor,
   deriveKek,
   b64encode,
   b64decode,
@@ -99,31 +100,11 @@ describe("the key vault", () => {
 });
 
 describe("opening a sealed message", () => {
-  // Builds an envelope the same way asym.rs does, so these exercise the real
-  // reading path rather than a mock of it.
+  // The real sealing path, not a copy of it. A local re-implementation would
+  // keep passing after vault.ts drifted away from it, which is the one thing
+  // these tests exist to catch.
   function sealFor(recipients: Uint8Array[], plaintext: string, ctx = "message-body"): Envelope {
-    const enc = new TextEncoder();
-
-    const dek = crypto.getRandomValues(new Uint8Array(32));
-    const nonce = crypto.getRandomValues(new Uint8Array(24));
-    const ct = xchacha20poly1305(dek, nonce, enc.encode(ctx)).encrypt(enc.encode(plaintext));
-
-    const wrapped = recipients.map((rpk) => {
-      const esk = x25519.utils.randomSecretKey();
-      const epk = x25519.getPublicKey(esk);
-      const shared = x25519.getSharedSecret(esk, rpk);
-
-      const salt = new Uint8Array([...epk, ...rpk]);
-      const wrapKey = hkdf(sha256, shared, salt, enc.encode(`securifi-connect/wrap/v1/${ctx}`), 32);
-
-      const kid = keyId(rpk);
-      const wn = crypto.getRandomValues(new Uint8Array(24));
-      const k = xchacha20poly1305(wrapKey, wn, enc.encode(kid)).encrypt(dek);
-
-      return { kid, epk: b64encode(epk), wn: b64encode(wn), k: b64encode(k) };
-    });
-
-    return { v: 1, ctx, n: b64encode(nonce), ct: b64encode(ct), recipients: wrapped };
+    return realSealFor(recipients, new TextEncoder().encode(plaintext), ctx);
   }
 
   it("reads a message sealed to its own key", () => {
@@ -230,5 +211,63 @@ describe("opening an envelope sealed by engine-rs", () => {
 
     // kid matches so the entry is found, but the ECDH differs — the tag must fail.
     expect(() => openEnvelope(stranger.privateKey, b64decode(FIXTURE_PUBLIC), fixture)).toThrow();
+  });
+});
+
+// Outbound runs the other way: the browser seals, the engine opens. Nothing
+// above proves that direction, and a mistake in it would not look like an
+// error — the reply would simply never be sent, or worse, be sendable by
+// somebody it was not sealed to.
+describe("sealing a reply the engine has to open", () => {
+  // The key the fixture below is sealed to, matching the constant in
+  // engine-rs/crates/connect-crypto/tests/interop.rs. A test vector; it protects
+  // nothing real.
+  const ENGINE_PRIVATE = "AwoRGB8mLTQ7QklQV15lbHN6gYiPlp2kq7K5wMfO1dw=";
+  const ENGINE_PUBLIC = "u1D/noKldM+/gg6X9g+5wUPsdBXPUU+M/Zjv9Z4FlhQ=";
+
+  it("seals a reply the engine's key opens", () => {
+    const envelope = realSealFor([b64decode(ENGINE_PUBLIC)], new TextEncoder().encode("boleh, saya hantar"), "message-transmit");
+
+    const opened = openEnvelope(b64decode(ENGINE_PRIVATE), b64decode(ENGINE_PUBLIC), envelope);
+    expect(new TextDecoder().decode(opened!)).toBe("boleh, saya hantar");
+  });
+
+  it("does not let anyone else open the transmit copy", () => {
+    const stranger = generateKeypair();
+    const envelope = realSealFor([b64decode(ENGINE_PUBLIC)], new TextEncoder().encode("secret"), "message-transmit");
+
+    expect(openEnvelope(stranger.privateKey, stranger.publicKey, envelope)).toBeNull();
+  });
+
+  it("refuses to seal to nobody", () => {
+    // An envelope with no recipients is unreadable forever. Losing the reply is
+    // recoverable; storing something nobody can ever open is not.
+    expect(() => realSealFor([], new TextEncoder().encode("x"), "message-transmit")).toThrow();
+  });
+
+  it("seals the history copy to every reader", () => {
+    const ali = generateKeypair();
+    const siti = generateKeypair();
+    const envelope = realSealFor([ali.publicKey, siti.publicKey], new TextEncoder().encode("reply"), "message-body");
+
+    for (const reader of [ali, siti]) {
+      expect(new TextDecoder().decode(openEnvelope(reader.privateKey, reader.publicKey, envelope)!)).toBe("reply");
+    }
+  });
+
+  // Writes the fixture the Rust side opens in its own test, proving a
+  // browser-sealed envelope survives the crossing. A generator, not a check —
+  // run it only when the wire format changes:
+  //   EMIT_TS_FIXTURE=1 npx vitest run src/lib/crypto/vault.test.ts
+  it("emits the cross-language fixture", async () => {
+    if (!process.env.EMIT_TS_FIXTURE) return;
+
+    const envelope = realSealFor([b64decode(ENGINE_PUBLIC)], new TextEncoder().encode("the agent's reply"), "message-transmit");
+    const fs = await import("node:fs/promises");
+
+    await fs.writeFile(
+      "../engine-rs/crates/connect-crypto/tests/fixtures/transmit_v1.json",
+      JSON.stringify(envelope, null, 2) + "\n",
+    );
   });
 });

@@ -1,3 +1,5 @@
+import type { Envelope } from "./crypto/vault";
+
 const FALLBACK_API_BASE = "http://localhost:3000";
 let API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -255,10 +257,20 @@ export async function apiGetGroupParticipants(
   return res.json();
 }
 
+/**
+ * A reply is sent either in the clear or as two envelopes — never both. The
+ * sealed form carries `sealed_body` for the readers' history and
+ * `transmit_body` for the engine that has to speak it to WhatsApp; Rails stores
+ * both and opens neither. See engine-rs/docs/PRIVACY.md.
+ */
+export type OutboundBody =
+  | { body: string }
+  | { sealed_body: Envelope; transmit_body: Envelope };
+
 export async function apiSendMessage(
   token: string,
   conversationId: number,
-  body: string,
+  body: OutboundBody,
   clientMessageId?: string
 ) {
   const res = await fetch(
@@ -269,10 +281,31 @@ export async function apiSendMessage(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ body, client_message_id: clientMessageId }),
+      body: JSON.stringify({ ...body, client_message_id: clientMessageId }),
     }
   );
   if (!res.ok) throw new Error("Failed to send message");
+  return res.json();
+}
+
+/** Public keys a reply to this conversation must be sealed to. */
+export type ConversationSealingKeys = {
+  conversation_id: number;
+  privacy: "private" | "server_readable";
+  /** Null when the engine has no keypair: a sealed reply could not be sent. */
+  engine_public_key: string | null;
+  readers: Array<{ kid: string; public_key: string }>;
+};
+
+export async function apiGetConversationReaderKeys(
+  token: string,
+  conversationId: number
+): Promise<ConversationSealingKeys> {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}/reader_keys`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Could not load sealing keys (${res.status})`);
   return res.json();
 }
 

@@ -112,6 +112,51 @@ export async function unwrapPrivateKey(secret: string, vault: Vault): Promise<Ui
 }
 
 /**
+ * Seals a message so that exactly `recipients` can open it — the mirror of
+ * `seal_for` in asym.rs, and the reason outbound replies never reach the server
+ * in the clear.
+ *
+ * Only public keys are needed, so sealing does not imply being able to read
+ * back: a browser that has locked can still be a sender. Throws on an empty
+ * recipient list, because an envelope nobody can open is silent data loss.
+ */
+export function sealFor(recipients: Uint8Array[], plaintext: Uint8Array, ctx: string): Envelope {
+  if (recipients.length === 0) throw new Error("refusing to seal to nobody");
+
+  const dek = randomBytes(32);
+  const nonce = randomBytes(24);
+  const ct = xchacha20poly1305(dek, nonce, utf8(ctx)).encrypt(plaintext);
+
+  return {
+    v: 1,
+    ctx,
+    n: b64encode(nonce),
+    ct: b64encode(ct),
+    recipients: recipients.map((rpk) => wrapFor(dek, rpk, ctx)),
+  };
+}
+
+function wrapFor(dek: Uint8Array, recipient: Uint8Array, ctx: string): WrappedKey {
+  const ephemeral = x25519.utils.randomSecretKey();
+  const epk = x25519.getPublicKey(ephemeral);
+  const shared = x25519.getSharedSecret(ephemeral, recipient);
+
+  // Same salt and info as openEnvelope, in the same order. These two must be
+  // read together: a change to one that is not made to the other produces
+  // messages that seal fine and never open.
+  const wrapKey = hkdf(sha256, shared, concat(epk, recipient), utf8(WRAP_INFO_PREFIX + ctx), 32);
+  const wn = randomBytes(24);
+  const kid = keyId(recipient);
+
+  return {
+    kid,
+    epk: b64encode(epk),
+    wn: b64encode(wn),
+    k: b64encode(xchacha20poly1305(wrapKey, wn, utf8(kid)).encrypt(dek)),
+  };
+}
+
+/**
  * Opens a sealed message. Returns null when the envelope holds no wrap for this
  * key — that is a normal state meaning "not sealed for you", not an error, and
  * callers must show it as such rather than as a crash or a blank message.

@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { resolveMessageBody } from "@/lib/crypto/message";
+import { ReaderKeyGate } from "@/components/crypto/ReaderKeyGate";
 import type { Envelope } from "@/lib/crypto/vault";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -474,6 +475,15 @@ export default function ConversationPage() {
           onScroll={handleMessagesScroll}
           className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[hsl(var(--background))]"
         >
+          {/* Only asks when there is actually something sealed to read, so a
+              tenant not using encryption never sees a passphrase prompt. The
+              gate renders nothing once the key is held. */}
+          {token && messages.some((m) => m.sealed_body) && (
+            <ReaderKeyGate
+              token={token as string}
+              onUnlocked={() => setMessages((prev) => [...prev])}
+            />
+          )}
           <div className="rounded-xl border border-border/60 bg-[hsl(var(--card))] p-3">
             <ConversationSummary
               summary={conversation.summary}

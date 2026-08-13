@@ -819,3 +819,55 @@ export async function apiGetAuditLogs(
   if (!res.ok) throw new Error("Failed to load audit logs");
   return res.json();
 }
+
+// --- Reader key material (end-to-end encryption) ---
+//
+// The server stores a public key and two wrapped copies of the private key,
+// and can open neither. The passphrase is never sent — everything here moves
+// inert blobs. See engine-rs/docs/CLIENT_CRYPTO.md.
+
+export type StoredVault = {
+  v: number;
+  kdf: { alg?: string; m: number; t: number; p: number; salt: string };
+  n: string;
+  ct: string;
+};
+
+export type ReaderKeyStatus =
+  | { enrolled: false }
+  | { enrolled: true; kid: string; public_key: string; vault: StoredVault; label?: string | null };
+
+export async function apiGetReaderKey(token: string): Promise<ReaderKeyStatus> {
+  const res = await fetch(`${API_BASE}/api/v1/me/keys`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Could not load key material (${res.status})`);
+  return res.json();
+}
+
+export async function apiEnrollReaderKey(
+  token: string,
+  key: { kid: string; public_key: string; vault: StoredVault; recovery_vault: StoredVault; label?: string }
+) {
+  const res = await fetch(`${API_BASE}/api/v1/me/keys`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ user_key: key }),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.error || `Enrollment failed (${res.status})`);
+  }
+  return res.json();
+}
+
+/** Password change: re-wrap the same private key. The keypair is unchanged, so
+ * nothing already sealed needs re-sealing. */
+export async function apiRewrapReaderVault(token: string, vault: StoredVault) {
+  const res = await fetch(`${API_BASE}/api/v1/me/keys/vault`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ user_key: { vault } }),
+  });
+  if (!res.ok) throw new Error(`Could not update key vault (${res.status})`);
+}

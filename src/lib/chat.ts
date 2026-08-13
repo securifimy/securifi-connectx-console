@@ -1,4 +1,6 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const FALLBACK_API_BASE = "http://localhost:3000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  || (typeof window !== "undefined" ? window.location.origin : FALLBACK_API_BASE);
 
 export async function apiSendNewChat(
   token: string,

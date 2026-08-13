@@ -1,15 +1,26 @@
-const tiers = [
-  { name: "Free", price: "$0", desc: "For trying things out", bullets: ["1 channel", "1k messages/mo", "Webhook access"] },
-  { name: "Pro", price: "$19", desc: "Most popular for support teams", bullets: ["5 channels", "50k messages/mo", "API + Webhooks", "Priority email support"], highlight: true },
-  { name: "Business", price: "Contact us", desc: "High volume and dedicated support", bullets: ["Custom limits", "SLA options", "Dedicated success"], cta: "Contact sales" },
-];
+import { PLAN_DEFINITIONS } from "@/lib/plans";
 
 const comparison = [
-  { label: "Channels", free: "1", pro: "5", business: "Custom" },
-  { label: "Messages / month", free: "1k", pro: "50k", business: "Custom" },
-  { label: "API access", free: "Yes", pro: "Yes", business: "Yes" },
-  { label: "Webhooks", free: "Yes", pro: "Yes", business: "Yes" },
-  { label: "Support", free: "Community", pro: "Email", business: "Priority" },
+  {
+    label: "Channels",
+    values: PLAN_DEFINITIONS.map((plan) => plan.channels),
+  },
+  {
+    label: "Messages / month",
+    values: PLAN_DEFINITIONS.map((plan) => plan.messagesPerMonth),
+  },
+  {
+    label: "API access",
+    values: PLAN_DEFINITIONS.map((plan) => plan.apiAccess),
+  },
+  {
+    label: "Webhooks",
+    values: PLAN_DEFINITIONS.map((plan) => plan.webhooks),
+  },
+  {
+    label: "Support",
+    values: PLAN_DEFINITIONS.map((plan) => plan.support),
+  },
 ];
 
 export default function PricingPage() {
@@ -23,21 +34,21 @@ export default function PricingPage() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
-          {tiers.map((tier) => (
+          {PLAN_DEFINITIONS.map((tier) => (
             <div
-              key={tier.name}
+              key={tier.code}
               className={`border rounded-xl p-6 space-y-3 ${
                 tier.highlight ? "border-blue-500/60 bg-blue-500/10" : "border-slate-800 bg-slate-900/50"
               }`}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">{tier.name}</h2>
+                <h2 className="text-lg font-semibold text-white">{tier.label}</h2>
                 {tier.highlight && (
                   <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-blue-600 text-white">Most popular</span>
                 )}
               </div>
-              <p className="text-2xl font-bold text-white">{tier.price}</p>
-              <p className="text-sm text-slate-300">{tier.desc}</p>
+              <p className="text-2xl font-bold text-white">{tier.monthlyPriceLabel}</p>
+              <p className="text-sm text-slate-300">{tier.description}</p>
               <ul className="text-sm text-slate-200 space-y-2">
                 {tier.bullets.map((b) => (
                   <li key={b} className="flex items-start gap-2">
@@ -47,14 +58,14 @@ export default function PricingPage() {
                 ))}
               </ul>
               <a
-                href="/signup"
+                href={tier.ctaHref || "/signup"}
                 className={`inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium ${
                   tier.highlight
                     ? "bg-white text-slate-900 hover:bg-slate-100"
                     : "bg-blue-600 text-white hover:bg-blue-700"
                 }`}
               >
-                {tier.cta || "Start free trial"}
+                {tier.ctaLabel || "Start free trial"}
               </a>
             </div>
           ))}
@@ -76,9 +87,14 @@ export default function PricingPage() {
                 {comparison.map((row) => (
                   <tr key={row.label} className="border-b border-slate-800 text-slate-200">
                     <td className="py-2">{row.label}</td>
-                    <td className="py-2">{row.free}</td>
-                    <td className="py-2 font-semibold text-blue-100">{row.pro}</td>
-                    <td className="py-2">{row.business}</td>
+                    {row.values.map((value, index) => (
+                      <td
+                        key={`${row.label}-${PLAN_DEFINITIONS[index].code}`}
+                        className={`py-2 ${PLAN_DEFINITIONS[index].highlight ? "font-semibold text-blue-100" : ""}`}
+                      >
+                        {value}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>
@@ -89,7 +105,7 @@ export default function PricingPage() {
         <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-slate-800 p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <p className="text-sm text-blue-100">Not sure where to start?</p>
-            <h4 className="text-2xl font-semibold text-white">Upgrade to Pro anytime</h4>
+            <h4 className="text-2xl font-semibold text-white">Start on Free, move up as usage grows</h4>
           </div>
           <a
             href="/signup"

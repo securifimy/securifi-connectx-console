@@ -100,6 +100,31 @@ export async function apiSuperadminTenant(id: number | string) {
   return superadminFetch(`/tenants/${id}`);
 }
 
+export async function apiSuperadminUpdateTenant(
+  id: number | string,
+  attrs: {
+    name?: string;
+    plan?: string;
+    status?: string;
+    monthly_quota_messages?: number;
+    monthly_quota_api_calls?: number;
+    monthly_quota_channels?: number;
+    soft_limit?: boolean;
+    hard_limit?: boolean;
+  }
+) {
+  const res = await fetch(`${API_BASE}/api/superadmin/v1/tenants/${id}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${typeof window !== "undefined" ? getAuthToken() : ""}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ tenant: attrs }),
+  });
+  if (!res.ok) throw new Error(`Failed to update tenant (${res.status})`);
+  return res.json();
+}
+
 export async function apiSuperadminApiLogs(params?: { tenant_id?: string; status?: string; q?: string; page?: number }) {
   return superadminFetch("/api_request_logs", params);
 }

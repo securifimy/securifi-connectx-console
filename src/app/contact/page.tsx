@@ -5,7 +5,7 @@ export default function ContactPage() {
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-blue-400">Contact</p>
           <h1 className="text-3xl font-semibold text-white">Talk to us</h1>
-          <p className="text-sm text-slate-400">Questions about onboarding, pricing, or enterprise? We’re here to help.</p>
+          <p className="text-sm text-slate-400">Questions about onboarding, pricing, or business plans? We’re here to help.</p>
         </div>
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 space-y-3 text-sm">
           <p className="text-slate-300">Email</p>

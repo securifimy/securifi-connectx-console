@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiGetBillingSummary, apiGetInvoices } from "@/lib/api";
 import { WorkspaceShell } from "@/components/layout/WorkspaceShell";
+import { formatPlanLabel } from "@/lib/plans";
 
 type BillingSummary = {
   plan: string;
@@ -78,7 +79,7 @@ export default function BillingPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-[var(--text2)]">Current plan</p>
-                <p className="text-lg font-semibold text-[var(--text)] uppercase">{summary.plan}</p>
+                <p className="text-lg font-semibold text-[var(--text)]">{formatPlanLabel(summary.plan)}</p>
               </div>
               <div className="text-xs text-[var(--text2)]">
                 Hard limit: {summary.hard_limit ? "On" : "Off"} · Soft limit: {summary.soft_limit ? "On" : "Off"}

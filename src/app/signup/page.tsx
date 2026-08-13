@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRegister } from "@/lib/api";
-
-const plans = [
-  { code: "free", label: "Free" },
-  { code: "pro", label: "Pro" },
-];
+import { SIGNUP_PLAN_OPTIONS } from "@/lib/plans";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -113,7 +109,7 @@ export default function SignupPage() {
           <div className="space-y-2">
             <label className="text-xs text-slate-300">Plan</label>
             <div className="grid grid-cols-2 gap-2">
-              {plans.map((p) => (
+              {SIGNUP_PLAN_OPTIONS.map((p) => (
                 <button
                   type="button"
                   key={p.code}

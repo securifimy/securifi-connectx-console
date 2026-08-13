@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local dev CA cert, machine-specific — not source.
+caddy-local-root.crt

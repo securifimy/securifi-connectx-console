@@ -4,6 +4,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useRouter } from "next/navigation";
 import { UserProfileMenu } from "./UserProfileMenu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { formatPlanLabel } from "@/lib/plans";
 
 type TopbarProps = {
   variant?: "tenant" | "superadmin";
@@ -22,9 +23,11 @@ export function Topbar({
   const isTenant = variant === "tenant";
   const hasPageHeader = Boolean(title || subtitle);
   const planValue =
-    ((tenant as Record<string, unknown> | null)?.["plan"] as string | undefined) ||
-    ((tenant as Record<string, unknown> | null)?.["current_plan"] as string | undefined) ||
-    "Free";
+    formatPlanLabel(
+      ((tenant as Record<string, unknown> | null)?.["current_plan"] as string | undefined) ||
+      ((tenant as Record<string, unknown> | null)?.["plan"] as string | undefined) ||
+      "free"
+    );
   const name = (user as Record<string, unknown> | null)?.["name"] as string | undefined;
   const email = (user as Record<string, unknown> | null)?.["email"] as string | undefined;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { apiCreateChannelAccount, apiStartChannelAccountSession } from "@/lib/api";
@@ -22,11 +22,27 @@ export default function ChannelCreatePage() {
     error,
   } = useChannelWizard();
 
+  // Creating a channel is a write, and this effect runs twice per mount in
+  // development — which produced two channel accounts and two live WhatsApp
+  // sessions every time someone opened this page, one of them an orphan nobody
+  // could see. `cancelled` did not help: it suppresses handling the response,
+  // not sending the request.
+  //
+  // ponytail: guards the double-invoke, not a reload — refreshing this URL still
+  // provisions another account, because provisioning is a side effect of
+  // arriving here. The real fix is to create on an explicit action, or to reuse
+  // the workspace's existing unpaired account; either is a bigger change than
+  // the bug in front of us.
+  const provisioned = useRef(false);
+
   useEffect(() => {
     if (!token) {
       router.replace("/login");
       return;
     }
+    if (provisioned.current) return;
+    provisioned.current = true;
+
     const authToken = token as string;
 
     let cancelled = false;

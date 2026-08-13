@@ -500,10 +500,17 @@ export default function ConversationPage() {
           onScroll={handleMessagesScroll}
           className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[hsl(var(--background))]"
         >
-          {/* Only asks when there is actually something sealed to read, so a
-              tenant not using encryption never sees a passphrase prompt. The
-              gate renders nothing once the key is held. */}
-          {token && messages.some((m) => m.sealed_body) && (
+          {/* Mounted whenever the key is not held in this session, not only
+              when something sealed is already on screen. Waiting for the first
+              sealed message was too late in both directions: a conversation is
+              private by default, so with no enrolled key in the workspace the
+              engine refuses to seal and DROPS inbound messages, and a reply
+              cannot be sent either. The enrolment has to be reachable before
+              the first message, not after one has already been lost.
+
+              The gate renders nothing once the key is held, so a workspace that
+              is set up never sees it. */}
+          {token && (
             <ReaderKeyGate
               token={token as string}
               onUnlocked={() => setMessages((prev) => [...prev])}

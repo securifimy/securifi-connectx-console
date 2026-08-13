@@ -53,12 +53,20 @@ export default function ChannelsPage() {
     loadAccounts();
   }, [loadAccounts]);
 
-  async function handleDisconnect(accountId: number) {
+  // Two different actions wearing one label until now. Pausing is undone from
+  // this screen; unlinking needs the phone back in someone's hand, so it says so
+  // before it happens rather than after.
+  async function handleDisconnect(accountId: number, unlink = false) {
     if (!token) return;
-    if (!window.confirm("Disconnect this WhatsApp session?")) return;
+
+    const question = unlink
+      ? "Unlink this phone from WhatsApp?\n\nThe device is logged out and its credentials are erased. Reconnecting will need a new pairing code typed into the phone."
+      : "Pause this WhatsApp session?\n\nThe phone stays linked, so you can reconnect from here without touching it.";
+    if (!window.confirm(question)) return;
+
     setActioningId(accountId);
     try {
-      await apiDisconnectChannelAccount(token, accountId);
+      await apiDisconnectChannelAccount(token, accountId, { unlink });
       await loadAccounts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to disconnect channel");
@@ -172,7 +180,17 @@ export default function ChannelsPage() {
                     disabled={actioningId === acc.id}
                     className="px-3 py-1.5 text-sm rounded-lg bg-amber-500 text-white hover:bg-amber-400 disabled:opacity-60"
                   >
-                    {actioningId === acc.id ? "Disconnecting..." : "Disconnect"}
+                    {actioningId === acc.id ? "Pausing..." : "Pause"}
+                  </button>
+                )}
+                {acc.status === "active" && (
+                  <button
+                    onClick={() => handleDisconnect(acc.id, true)}
+                    disabled={actioningId === acc.id}
+                    className="px-3 py-1.5 text-sm rounded-lg border border-ui-border text-foreground hover:bg-muted disabled:opacity-60"
+                    title="Log the device out of WhatsApp and erase its credentials"
+                  >
+                    Unlink phone
                   </button>
                 )}
                 <button

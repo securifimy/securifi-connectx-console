@@ -444,9 +444,15 @@ export async function apiStartChannelAccountSession(
   return res.json();
 }
 
+/**
+ * Stops the session. `unlink: true` also logs the device out of WhatsApp and
+ * wipes its credentials, which can only be undone by someone holding the phone
+ * — so it is never the default.
+ */
 export async function apiDisconnectChannelAccount(
   token: string,
-  channelAccountId: number
+  channelAccountId: number,
+  options: { unlink?: boolean } = {}
 ) {
   const res = await fetch(`${API_BASE}/api/v1/channel_accounts/${channelAccountId}/disconnect`, {
     method: "POST",
@@ -454,7 +460,7 @@ export async function apiDisconnectChannelAccount(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ unlink: options.unlink === true }),
   });
 
   if (!res.ok) throw new Error("Failed to disconnect channel account");

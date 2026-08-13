@@ -55,6 +55,11 @@ type Props = {
 // (each one wiping the in-flight QR generation from the prior click).
 const FORCE_RESTART_COOLDOWN_MS = 30000;
 
+/** WhatsApp wants digits; people paste "+60 12-345 6789". */
+function digitsOnly(input: string): string {
+  return input.replace(/\D+/g, "");
+}
+
 function normalizeQr(value?: string | null) {
   if (!value) return null;
   return value.startsWith("data:image") ? value : `data:image/png;base64,${value}`;
@@ -212,6 +217,7 @@ export function ChannelConnectExperience({
   const [session, setSession] = useState<SessionStatus | null>(null);
   const [qr, setQr] = useState<string | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [codePhone, setCodePhone] = useState("");
   const [loadingAccount, setLoadingAccount] = useState(true);
   const [pollError, setPollError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -248,16 +254,18 @@ export function ChannelConnectExperience({
   }, [token, channelAccountId]);
 
   const startSession = useCallback(
-    async (clearQr = false, forceRestart = false) => {
+    async (clearQr = false, forceRestart = false, phoneNumber?: string) => {
       if (!token) return;
       setIsStarting(true);
       setActionError(null);
       if (clearQr) {
         setQr(null);
+        setPairingCode(null);
       }
       try {
         await apiStartChannelAccountSession(token, channelAccountId, {
           forceRestart,
+          phoneNumber,
         });
       } catch (err) {
         console.error("Failed to start WhatsApp session", err);
@@ -515,6 +523,45 @@ export function ChannelConnectExperience({
               {(pollError || actionError) && (
                 <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {pollError || actionError}
+                </div>
+              )}
+
+              {/* Linking by code, reachable from a reconnect too. This screen
+                  could only ever produce a QR, so re-linking an existing
+                  channel dropped the operator back into the fragile flow —
+                  a QR sequence dies in about two minutes, a typed code does
+                  not. Only offered while the session is actually waiting to be
+                  linked; a connected channel needs none of this. */}
+              {stage !== "connected" && (
+                <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border/60 bg-[hsl(var(--background))]/70 p-4">
+                  <div className="flex-1 min-w-[220px] space-y-1">
+                    <label htmlFor="relink-phone" className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Link by code instead
+                    </label>
+                    <input
+                      id="relink-phone"
+                      type="tel"
+                      inputMode="tel"
+                      placeholder={detectedPhone || "60123456789"}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      value={codePhone}
+                      disabled={isStarting}
+                      onChange={(e) => setCodePhone(e.target.value)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isStarting || digitsOnly(codePhone || detectedPhone || "").length < 8}
+                    onClick={() => {
+                      const digits = digitsOnly(codePhone || detectedPhone || "");
+                      // Asking for a code means re-linking, so the old session
+                      // is torn down deliberately rather than reused.
+                      void startSession(true, true, digits);
+                    }}
+                    className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                  >
+                    Send me a code
+                  </button>
                 </div>
               )}
 

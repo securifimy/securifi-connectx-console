@@ -606,7 +606,14 @@ export default function ConversationPage() {
                     )}
                     <div className={clsx("mt-1 text-[11px] text-muted-foreground", isOutbound ? "text-right" : "text-left")}>
                       {timestampText}
-                      {isOutbound && msg.status ? ` · ${msg.status}` : ""}
+                      {isOutbound && msg.status ? (
+                        <span
+                          className={clsx("ml-1", msg.status === "read" && "text-sky-500")}
+                          title={msg.status}
+                        >
+                          · {deliveryTicks(msg.status)}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -655,6 +662,25 @@ export default function ConversationPage() {
 
     </WorkspaceShell>
   );
+}
+
+// What WhatsApp users already read at a glance. The words behind them are kept
+// in the title attribute rather than dropped, because "delivered" and "read"
+// are the difference between chasing a customer and waiting, and a glyph alone
+// is not much use to a screen reader.
+function deliveryTicks(status: string): string {
+  switch (status) {
+    case "read":
+      return "✓✓";
+    case "delivered":
+      return "✓✓";
+    case "sent":
+      return "✓";
+    case "error":
+      return "⚠ not sent";
+    default:
+      return "· · ·";
+  }
 }
 
 function isConversationUpdatePayload(data: unknown): data is ConversationUpdatePayload {

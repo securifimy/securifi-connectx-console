@@ -114,6 +114,10 @@ function deriveStage(session: SessionStatus | null, qr: string | null, pairingCo
   const status = String(session?.status || "").toLowerCase();
   if (status === "failed") return "failed";
   if (status === "disconnected") return "disconnected";
+  // Nothing linked and nothing on offer: WhatsApp has stopped issuing codes.
+  // This used to fall through to "starting", so the screen sat there promising
+  // a fresh QR was on its way — for as long as anyone was willing to watch.
+  if (status === "unpaired" || status === "absent") return "expired";
   if (status === "connecting" || status === "pending" || status === "authenticated" || status === "starting") {
     return "connecting";
   }
@@ -129,6 +133,8 @@ function stageLabel(stage: string) {
       return "Enter code";
     case "scan":
       return "Scan QR";
+    case "expired":
+      return "Expired";
     case "connecting":
       return "Syncing";
     case "disconnected":
@@ -148,6 +154,7 @@ function stagePill(stage: string) {
     case "scan":
     case "connecting":
       return "bg-amber-50 text-amber-700 border border-amber-100";
+    case "expired":
     case "failed":
     case "disconnected":
       return "bg-red-50 text-red-600 border border-red-100";
@@ -164,6 +171,8 @@ function stageHeadline(stage: string) {
       return "Type this code into WhatsApp";
     case "scan":
       return "Scan this QR code";
+    case "expired":
+      return "The linking code expired";
     case "connecting":
       return "Finishing secure link";
     case "disconnected":
@@ -183,6 +192,8 @@ function stageDescription(stage: string) {
       return "On the phone you are linking: WhatsApp \u2192 Settings \u2192 Linked Devices \u2192 Link a device \u2192 Link with phone number.";
     case "scan":
       return "Open WhatsApp on your phone, go to Linked Devices, and scan the QR code.";
+    case "expired":
+      return "WhatsApp stops offering codes after a couple of minutes. Nothing is linked yet — ask for a new one to try again.";
     case "connecting":
       return "The device has been detected. We are waiting for WhatsApp to finish syncing and confirm readiness.";
     case "disconnected":
@@ -581,6 +592,8 @@ export function ChannelConnectExperience({
                     ? `Wait ${cooldownSecondsLeft}s before retry`
                     : stage === "scan"
                     ? "Refresh QR"
+                    : stage === "expired"
+                    ? "Get a new QR code"
                     : "Restart session";
                   return (
                     <button

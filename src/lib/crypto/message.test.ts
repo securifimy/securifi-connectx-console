@@ -90,6 +90,23 @@ describe("resolving a message for display", () => {
     expect(isSealed({ body: "clear" })).toBe(false);
     expect(isSealed({ sealed_body: sealFor([me.publicKey], "x") })).toBe(true);
   });
+
+  it("opens an envelope sealed to it, which is what a server_readable chat now produces", () => {
+    const reader = generateKeypair();
+    // `sealFor` here is the file-local wrapper at message.test.ts:16, which takes
+    // a plaintext STRING and defaults ctx to "message-body" — not the imported
+    // one, which arrives as `realSealFor`. Passing a Uint8Array would seal the
+    // stringified byte list and the assertion would fail on "112,101,115,...".
+    const sealed = sealFor([reader.publicKey], "pesanan");
+
+    // identityFor (message.test.ts:20-24) supplies the `kid` that ReaderIdentity
+    // requires (session.ts:21-25). An inline { privateKey, publicKey } runs fine
+    // under vitest and fails `tsc --noEmit` one task later, in Task 5.
+    const resolved = resolveMessageBody({ body: null, sealed_body: sealed }, identityFor(reader));
+
+    expect(resolved.kind).toBe("readable");
+    expect(resolved.text).toBe("pesanan");
+  });
 });
 
 describe("the reader session", () => {

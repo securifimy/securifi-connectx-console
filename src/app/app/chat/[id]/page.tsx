@@ -19,7 +19,7 @@ import {
   apiDeleteConversation,
   apiDeleteMessage,
 } from "@/lib/api";
-import { formatPhoneFromExternalId } from "@/lib/chat";
+import { formatPhoneFromExternalId, replacesPendingSend } from "@/lib/chat";
 import { getCable } from "@/lib/cable";
 import { ConversationSummary } from "@/components/chat/ConversationSummary";
 import { SuggestionBar } from "@/components/chat/SuggestionBar";
@@ -213,15 +213,7 @@ export default function ConversationPage() {
           const message = data as Message;
           setMessages((prev) => {
             if (message.direction === "outbound") {
-              const incomingClientId = getClientMessageId(message);
-              const idx = prev.findIndex((m) => {
-                if (m.direction !== "outbound" || m.status !== "sending") return false;
-                const optimisticClientId = getClientMessageId(m);
-                if (incomingClientId && optimisticClientId) {
-                  return incomingClientId === optimisticClientId;
-                }
-                return m.body === message.body;
-              });
+              const idx = prev.findIndex((m) => replacesPendingSend(m, message));
               if (idx !== -1) {
                 const next = [...prev];
                 next[idx] = message;

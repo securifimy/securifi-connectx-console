@@ -199,6 +199,12 @@ export default function ConversationPage() {
             return;
           }
 
+          // ponytail: every payload that is not a conversation update is
+          // assumed to be a message to render. There is no removal event, so a
+          // delete in another tab is invisible here until a reload — the gap is
+          // a `message_deleted` / `conversation_deleted` payload plus a branch
+          // right here, and a way to reach the inbox list, which subscribes per
+          // conversation and hears nothing about one that has gone.
           const message = data as Message;
           setMessages((prev) => {
             if (message.direction === "outbound") {

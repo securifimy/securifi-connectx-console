@@ -30,17 +30,10 @@ export async function apiSendNewChat(
 ) {
   const keys = await apiGetSealingKeys(token);
 
-  // Sealed unless the workspace has explicitly decided otherwise. Rails refuses
-  // plaintext into a private conversation, so an unsealed send here would fail
-  // loudly rather than quietly storing the message in the clear — but doing it
-  // right is the point, not surviving the refusal.
-  const content =
-    keys.privacy === "private"
-      ? sealReply(payload.body, {
-          readers: keys.readers.map((r) => r.public_key),
-          engineKey: keys.engine_public_key,
-        })
-      : { body: payload.body };
+  const content = sealReply(payload.body, {
+    readers: keys.readers.map((r) => r.public_key),
+    engineKey: keys.engine_public_key,
+  });
 
   const res = await fetch(`${API_BASE}/api/v1/messages/send`, {
     method: "POST",

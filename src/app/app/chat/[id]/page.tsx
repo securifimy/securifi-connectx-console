@@ -279,13 +279,16 @@ export default function ConversationPage() {
       // silently leave them out of their own conversation.
       const keys = await apiGetConversationReaderKeys(token, conversation.id);
 
-      const payload =
-        keys.privacy === "private"
-          ? sealReply(optimistic.body, {
-              readers: keys.readers.map((r) => r.public_key),
-              engineKey: keys.engine_public_key,
-            })
-          : { body: optimistic.body };
+      // Always sealed. This used to send plaintext whenever the conversation
+      // was not marked private, which made one customer's integration able to
+      // strip the protection from the agents' side of the same conversation:
+      // a plain API send demotes it, and the next human reply would have gone
+      // in the clear. Nothing server-side can open an envelope anyway, so a
+      // server_readable conversation loses nothing by this.
+      const payload = sealReply(optimistic.body, {
+        readers: keys.readers.map((r) => r.public_key),
+        engineKey: keys.engine_public_key,
+      });
 
       await apiSendMessage(token, conversation.id, payload, clientMessageId);
     } catch (err) {

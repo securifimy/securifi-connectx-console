@@ -56,6 +56,10 @@ interface Message {
   created_at?: string | null;
   sender_external_id?: string | null;
   payload?: Record<string, unknown> | null;
+  /** All optional: the optimistic-send literal below carries none of them. */
+  stored?: boolean;
+  pending_history?: boolean;
+  error_message?: string | null;
 }
 
 type ConversationUpdatePayload = {
@@ -672,6 +676,8 @@ export default function ConversationPage() {
                       >
                         {resolved.kind === "locked" && "🔒 "}
                         {resolved.kind === "corrupt" && "⚠️ "}
+                        {resolved.kind === "unstored" && "🚫 "}
+                        {resolved.kind === "pending" && "⏳ "}
                         {text}
                       </p>
                     )}

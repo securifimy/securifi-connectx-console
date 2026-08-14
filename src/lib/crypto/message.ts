@@ -21,13 +21,18 @@ export type SealedMessage = {
   body?: string | null;
   sealed_body?: Envelope | null;
   encrypted?: boolean;
+  stored?: boolean;
+  pending_history?: boolean;
+  error_message?: string | null;
 };
 
 export type MessageBody =
   | { kind: "readable"; text: string }
   | { kind: "locked"; text: string }
   | { kind: "foreign"; text: string }
-  | { kind: "corrupt"; text: string };
+  | { kind: "corrupt"; text: string }
+  | { kind: "unstored"; text: string }
+  | { kind: "pending"; text: string };
 
 /**
  * `identity` is injectable so this can be tested without a module-level
@@ -40,9 +45,31 @@ export function resolveMessageBody(
   const envelope = message.sealed_body;
 
   if (!envelope) {
+    // Sealed for transmission with no history copy yet: the window between an
+    // API sealed send and the engine returning one, and the permanent state if
+    // that seal failed. The words exist, they are just not readable here.
+    if (message.pending_history && !message.body) {
+      // The error case is not the same as the waiting case, and the server can
+      // only tell them apart through error_message — `status` says "sent" for
+      // both, because the message genuinely was sent.
+      return message.error_message
+        ? { kind: "pending", text: `Sent, but we could not store a readable copy: ${message.error_message}` }
+        : { kind: "pending", text: "Sealed — history copy pending" };
+    }
+
+    // Sent on purpose with no copy kept. Checked only once there is genuinely
+    // nothing to show: an unstored message still has its body between the API
+    // call and the job clearing it, and saying "no copy kept" while the copy is
+    // on screen would be a lie in the safe-looking direction.
+    if (message.stored === false && !message.body) {
+      return { kind: "unstored", text: "Sent — no copy kept" };
+    }
+
     // Not sealed: either plaintext by design (a server_readable conversation,
     // or the old Node engine) or genuinely empty. An empty plaintext body is a
-    // real state and is reported as readable-but-empty, not as an error.
+    // real state and is reported as readable-but-empty, not as an error — the
+    // two branches above are what separate it from the states that only look
+    // like it.
     return { kind: "readable", text: message.body ?? "" };
   }
 

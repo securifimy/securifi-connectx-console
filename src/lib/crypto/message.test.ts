@@ -220,3 +220,33 @@ describe("sealing a reply before it leaves the browser", () => {
     expect(() => sealReply("x", { ...keys, readers: [] })).toThrow(/nobody/i);
   });
 });
+
+describe("messages with no readable copy", () => {
+  it("says a message was sent and deliberately not kept", () => {
+    const resolved = resolveMessageBody({ body: null, sealed_body: null, stored: false });
+
+    expect(resolved.kind).toBe("unstored");
+    expect(resolved.text).not.toBe("");
+  });
+
+  it("says a sealed message is still waiting for its history copy", () => {
+    const resolved = resolveMessageBody({ body: null, sealed_body: null, pending_history: true });
+
+    expect(resolved.kind).toBe("pending");
+    expect(resolved.text).not.toBe("");
+  });
+
+  it("says why when the history copy is never coming", () => {
+    // Task 10 depends on this: a delivered message whose history seal was
+    // ignored reports status "sent", so the bubble is the only place the
+    // customer can be told anything went wrong.
+    const resolved = resolveMessageBody({
+      body: null, sealed_body: null, pending_history: true,
+      error_message: "the engine returned no history copy; it may predate seal_history",
+    });
+
+    expect(resolved.kind).toBe("pending");
+    expect(resolved.text).toMatch(/could not store a readable copy/i);
+  });
+
+});

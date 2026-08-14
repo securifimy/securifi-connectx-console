@@ -612,6 +612,34 @@ export async function apiDeleteChannelApiKey(
   return true;
 }
 
+/** An integration's reader key: it can open history sealed while it is enrolled. */
+export type MachineKey = {
+  id: number;
+  kid: string;
+  label?: string | null;
+  channel_account_id?: number | null;
+  created_at?: string | null;
+  last_used_at?: string | null;
+};
+
+export async function apiListMachineKeys(token: string): Promise<MachineKey[]> {
+  const res = await fetch(`${API_BASE}/api/v1/machine_keys`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to load machine readers");
+  return res.json();
+}
+
+export async function apiDeleteMachineKey(token: string, keyId: number) {
+  const res = await fetch(`${API_BASE}/api/v1/machine_keys/${keyId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Failed to remove machine reader");
+  return true;
+}
+
 export async function apiGetWebhookDeliveries(
   token: string,
   channelAccountId: number

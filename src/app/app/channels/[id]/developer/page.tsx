@@ -8,12 +8,15 @@ import { useAuthStore } from "@/lib/auth-store";
 import {
   apiCreateChannelApiKey,
   apiDeleteChannelApiKey,
+  apiDeleteMachineKey,
   apiGetApiRequestLogs,
   apiGetChannelAccount,
   apiGetWebhookDeliveries,
   apiListChannelApiKeys,
+  apiListMachineKeys,
   apiReplayWebhookDelivery,
   updateChannelAccount,
+  type MachineKey,
 } from "@/lib/api";
 
 const WEBHOOK_EVENT_OPTIONS = ["inbound_message", "status_update"];
@@ -72,6 +75,16 @@ function formatDateTime(value?: string | null): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+// Workspace-wide, deliberately, even though this page is one account's.
+// UserKey.readers_for_tenant scopes machine keys by TENANT, not by channel
+// account — a key registered on any account is a reader for every conversation
+// in the workspace. Filtering this list to the current account would make the
+// empty state a lie ("nobody can read this") while a key on a sibling account
+// reads it fine, and would hide a leaked key from the admin hunting for it.
+function machineKeysFrom(data: unknown): MachineKey[] {
+  return Array.isArray(data) ? (data as MachineKey[]) : [];
 }
 
 function formatCount(value: number): string {
@@ -182,6 +195,7 @@ export default function ChannelDeveloperPage() {
 
   const [channel, setChannel] = useState<ChannelAccountDetails | null>(null);
   const [keys, setKeys] = useState<ChannelApiKey[]>([]);
+  const [machineKeys, setMachineKeys] = useState<MachineKey[]>([]);
   const [logs, setLogs] = useState<ApiRequestLog[]>([]);
   const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
   const [webhookUrl, setWebhookUrl] = useState("");
@@ -213,17 +227,19 @@ export default function ChannelDeveloperPage() {
 
       try {
         const authToken = token as string;
-        const [keyData, logData, deliveryData, channelData] = await Promise.all([
+        const [keyData, logData, deliveryData, channelData, machineKeyData] = await Promise.all([
           apiListChannelApiKeys(authToken, channelAccountId),
           apiGetApiRequestLogs(authToken, channelAccountId),
           apiGetWebhookDeliveries(authToken, channelAccountId),
           apiGetChannelAccount(authToken, channelAccountId),
+          apiListMachineKeys(authToken),
         ]);
 
         if (cancelled) return;
 
         setChannel(channelData as ChannelAccountDetails);
         setKeys(Array.isArray(keyData) ? keyData.filter((key: ChannelApiKey) => !key.disabled) : []);
+        setMachineKeys(machineKeysFrom(machineKeyData));
         setLogs(logData as ApiRequestLog[]);
         setDeliveries(deliveryData as WebhookDelivery[]);
         setWebhookUrl(((channelData as ChannelAccountDetails).webhook_url || "") as string);
@@ -269,14 +285,16 @@ export default function ChannelDeveloperPage() {
     setRefreshing(true);
     try {
       const authToken = token as string;
-      const [keyData, logData, deliveryData, channelData] = await Promise.all([
+      const [keyData, logData, deliveryData, channelData, machineKeyData] = await Promise.all([
         apiListChannelApiKeys(authToken, channelAccountId),
         apiGetApiRequestLogs(authToken, channelAccountId),
         apiGetWebhookDeliveries(authToken, channelAccountId),
         apiGetChannelAccount(authToken, channelAccountId),
+        apiListMachineKeys(authToken),
       ]);
       setChannel(channelData as ChannelAccountDetails);
       setKeys(Array.isArray(keyData) ? keyData.filter((key: ChannelApiKey) => !key.disabled) : []);
+      setMachineKeys(machineKeysFrom(machineKeyData));
       setLogs(logData as ApiRequestLog[]);
       setDeliveries(deliveryData as WebhookDelivery[]);
       setWebhookUrl(((channelData as ChannelAccountDetails).webhook_url || "") as string);
@@ -330,6 +348,24 @@ export default function ChannelDeveloperPage() {
     } catch (err) {
       console.error("Failed to delete API key", err);
       setError("Failed to delete API key");
+    }
+  }
+
+  async function handleRemoveMachineKey(key: MachineKey) {
+    if (!token) return;
+    const label = key.label || key.kid;
+    const confirmed = window.confirm(
+      `Remove "${label}"?\n\n` +
+        "That integration stops being able to read history sealed after this moment. " +
+        "Nothing already sealed to it changes — whatever it can read today, it can still read."
+    );
+    if (!confirmed) return;
+    try {
+      await apiDeleteMachineKey(token, key.id);
+      await refreshLists();
+    } catch (err) {
+      console.error("Failed to remove machine reader", err);
+      setError("Failed to remove machine reader");
     }
   }
 
@@ -585,6 +621,58 @@ export default function ChannelDeveloperPage() {
                         <tr>
                           <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                             No API keys yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-ui-border/70 bg-[hsl(var(--card))] p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-foreground">Machine readers</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Integrations enrolled to read this workspace&apos;s message history — a reader
+                  registered on any channel account can read every conversation in the workspace,
+                  so they are all listed here. Removing one only affects history sealed from that
+                  point on.
+                </p>
+
+                <div className="mt-5 overflow-x-auto rounded-2xl border border-ui-border/60">
+                  <table className="w-full text-sm">
+                    <thead className="bg-[hsl(var(--muted))] text-left text-muted-foreground">
+                      <tr>
+                        <th className="px-4 py-3">Label</th>
+                        <th className="px-4 py-3">Created</th>
+                        <th className="px-4 py-3">Last used</th>
+                        <th className="px-4 py-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {machineKeys.map((key) => (
+                        <tr key={key.id} className="border-t border-ui-border/60 bg-white">
+                          <td className="px-4 py-3 font-medium text-foreground">{key.label || key.kid}</td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {formatDateTime(key.created_at)}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {formatDateTime(key.last_used_at)}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMachineKey(key)}
+                              className="text-sm font-medium text-red-600 hover:text-red-700"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {machineKeys.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-8 text-center text-muted-foreground">
+                            No integrations can read this workspace&apos;s history.
                           </td>
                         </tr>
                       )}

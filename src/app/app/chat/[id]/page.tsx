@@ -42,6 +42,7 @@ interface Conversation {
   spam_score?: number | null;
   intent?: string | null;
   sentiment?: string | null;
+  privacy?: string | null;
 }
 
 interface Message {
@@ -517,6 +518,17 @@ export default function ConversationPage() {
               {isGroupConversation && (
                 <span className="inline-flex items-center rounded-full bg-muted px-2 py-[1px] text-[11px] font-semibold text-foreground/80 border border-border/50">
                   Group
+                </span>
+              )}
+              {/* Nothing when private — that is the default and the promise.
+                  The words, not the column value: this is the sentence someone
+                  has to understand to decide whether to change it. */}
+              {conversation.privacy === "server_readable" && (
+                <span
+                  className="inline-flex items-center rounded-full bg-amber-50 px-2 py-[1px] text-[11px] font-semibold text-amber-700 border border-amber-100"
+                  title="A plain-text send through the API turned off sealing for this chat. An admin can set it back to private."
+                >
+                  We can read this chat
                 </span>
               )}
             </div>

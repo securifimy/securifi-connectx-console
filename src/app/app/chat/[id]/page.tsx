@@ -16,6 +16,8 @@ import {
   apiGetConversations,
   apiGetGroupParticipants,
   apiGetConversationReaderKeys,
+  apiDeleteConversation,
+  apiDeleteMessage,
 } from "@/lib/api";
 import { formatPhoneFromExternalId } from "@/lib/chat";
 import { getCable } from "@/lib/cable";
@@ -294,6 +296,44 @@ export default function ConversationPage() {
     }
   }
 
+  // Both deletes say what they cost before they happen, because neither can be
+  // undone: the rows go, and the sealed envelopes with them. WhatsApp keeps its
+  // own copy and the recipient's phone is untouched — the wording says so
+  // rather than implying a reach we do not have.
+  async function handleDeleteConversation() {
+    if (!token || !conversation) return;
+    if (
+      !window.confirm(
+        `Delete this whole conversation?\n\nEvery message in it is removed from this workspace and cannot be recovered. The copy on WhatsApp and on the other person's phone is not affected.`
+      )
+    )
+      return;
+
+    try {
+      await apiDeleteConversation(token, conversation.id);
+      router.replace("/app/chat");
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Could not delete this conversation.");
+    }
+  }
+
+  async function handleDeleteMessage(messageId: number) {
+    if (!token || !conversation) return;
+    if (
+      !window.confirm(
+        "Delete this message?\n\nIt is removed from this workspace and cannot be recovered. The copy on the other person's phone is not affected."
+      )
+    )
+      return;
+
+    try {
+      await apiDeleteMessage(token, conversation.id, messageId);
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Could not delete this message.");
+    }
+  }
+
   async function handleRefreshSummary() {
     if (!token || !conversation) return;
     const authToken = token as string;
@@ -492,6 +532,14 @@ export default function ConversationPage() {
                 {conversation.status === "closed" ? "Closed" : "Open"}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => void handleDeleteConversation()}
+              className="ml-2 inline-flex items-center rounded-full border border-border/60 px-3 py-1 text-[12px] text-muted-foreground hover:border-destructive/40 hover:text-destructive"
+              title="Delete this conversation from the workspace"
+            >
+              Delete chat
+            </button>
           </div>
         </header>
 
@@ -565,8 +613,22 @@ export default function ConversationPage() {
               return (
                 <div
                   key={msg.id}
-                  className={isOutbound ? "flex justify-end" : "flex justify-start"}
+                  className={clsx("group flex items-center gap-2", isOutbound ? "justify-end" : "justify-start")}
                 >
+                  {/* Left of an outbound bubble, right of an inbound one, so it
+                      never covers the text. Hidden until hover: destroying a
+                      message should take intent, not a stray tap. */}
+                  {isOutbound && (
+                    <button
+                      type="button"
+                      aria-label="Delete message"
+                      title="Delete message"
+                      onClick={() => void handleDeleteMessage(msg.id)}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-xs text-muted-foreground hover:text-destructive transition-opacity"
+                    >
+                      ✕
+                    </button>
+                  )}
                   <div
                     className={clsx(
                       "max-w-[70%] rounded-2xl px-3 py-2 text-sm leading-relaxed shadow-sm break-words",
@@ -616,6 +678,17 @@ export default function ConversationPage() {
                       ) : null}
                     </div>
                   </div>
+                  {!isOutbound && (
+                    <button
+                      type="button"
+                      aria-label="Delete message"
+                      title="Delete message"
+                      onClick={() => void handleDeleteMessage(msg.id)}
+                      className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-xs text-muted-foreground hover:text-destructive transition-opacity"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </div>
               );
             })}

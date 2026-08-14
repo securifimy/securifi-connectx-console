@@ -221,6 +221,33 @@ export async function apiGetMessages(
   return res.json();
 }
 
+/**
+ * Removes our copy of a conversation and everything in it. Admin only, audited
+ * server-side, and not reversible — the sealed envelopes go with the rows.
+ */
+export async function apiDeleteConversation(token: string, conversationId: number) {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.error || `Could not delete this conversation (${res.status})`);
+  }
+}
+
+/** Same, for a single message. */
+export async function apiDeleteMessage(token: string, conversationId: number, messageId: number) {
+  const res = await fetch(`${API_BASE}/api/v1/conversations/${conversationId}/messages/${messageId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error(detail.error || `Could not delete this message (${res.status})`);
+  }
+}
+
 export async function apiGetConversation(
   token: string,
   conversationId: number

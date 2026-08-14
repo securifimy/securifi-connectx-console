@@ -118,12 +118,12 @@ export function sealReply(
 ): { sealed_body: Envelope; transmit_body: Envelope } {
   if (!keys.engineKey) {
     throw new Error(
-      "This conversation is private and the engine has no key to receive a sealed reply, so nothing was sent.",
+      "The engine has no key to receive a sealed reply, so nothing was sent.",
     );
   }
   if (keys.readers.length === 0) {
     throw new Error(
-      "This conversation is private and nobody here has enrolled an encryption key, so the reply could never be read back. Nothing was sent.",
+      "Nobody here has enrolled an encryption key, so the reply could never be read back. Nothing was sent.",
     );
   }
 

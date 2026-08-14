@@ -270,4 +270,9 @@ describe("sealing a reply the engine has to open", () => {
       JSON.stringify(envelope, null, 2) + "\n",
     );
   });
+
+  it("derives the key id the engine and Rails derive", () => {
+    const key = b64decode("AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=");
+    expect(keyId(key)).toBe("3hmYCXJMAuEF1tkyRSbAzA==");
+  });
 });

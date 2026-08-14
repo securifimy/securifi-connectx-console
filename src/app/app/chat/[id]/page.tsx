@@ -560,27 +560,36 @@ export default function ConversationPage() {
           </div>
         </header>
 
+        {/* Mounted whenever the key is not held in this session, not only
+            when something sealed is already on screen. Waiting for the first
+            sealed message was too late in both directions: a conversation is
+            private by default, so with no enrolled key in the workspace the
+            engine refuses to seal and DROPS inbound messages, and a reply
+            cannot be sent either. The enrolment has to be reachable before
+            the first message, not after one has already been lost.
+
+            The gate renders nothing once the key is held, so a workspace that
+            is set up never sees it.
+
+            Pinned ABOVE the scrolling list, not inside it. Inside, it was the
+            first child of a container that auto-scrolls to the newest message,
+            so the one control standing between a person and their unreadable
+            conversation scrolled itself out of view and drifted while the list
+            loaded. You had to hunt upward for it. */}
+        {token && (
+          <div className="shrink-0 px-6 pt-4">
+            <ReaderKeyGate
+              token={token as string}
+              onUnlocked={() => setMessages((prev) => [...prev])}
+            />
+          </div>
+        )}
+
         <div
           ref={messagesContainerRef}
           onScroll={handleMessagesScroll}
           className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3 bg-[hsl(var(--background))]"
         >
-          {/* Mounted whenever the key is not held in this session, not only
-              when something sealed is already on screen. Waiting for the first
-              sealed message was too late in both directions: a conversation is
-              private by default, so with no enrolled key in the workspace the
-              engine refuses to seal and DROPS inbound messages, and a reply
-              cannot be sent either. The enrolment has to be reachable before
-              the first message, not after one has already been lost.
-
-              The gate renders nothing once the key is held, so a workspace that
-              is set up never sees it. */}
-          {token && (
-            <ReaderKeyGate
-              token={token as string}
-              onUnlocked={() => setMessages((prev) => [...prev])}
-            />
-          )}
           <div className="rounded-xl border border-border/60 bg-[hsl(var(--card))] p-3">
             <ConversationSummary
               summary={conversation.summary}

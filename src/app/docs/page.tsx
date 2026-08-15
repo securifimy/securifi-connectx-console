@@ -61,16 +61,47 @@ const webhookInboundExample = `{
   "direction": "inbound",
   "sender_type": "external",
   "content_type": "text",
-  "body": "Hi, I need help",
+  "body": "",
+  "encrypted": true,
+  "sealed_body": {
+    "v": 1,
+    "ctx": "message-body",
+    "n": "<base64 nonce>",
+    "ct": "<base64 ciphertext>",
+    "recipients": [
+      { "kid": "...", "epk": "...", "wn": "...", "k": "..." }
+    ]
+  },
   "payload": {
-    "from": "60123456789@c.us",
-    "message_id": "ABGGFlA5FpafAgo6EhB8"
+    "from": "182691014144082@lid",
+    "from_me": false,
+    "peer_name": "Eman",
+    "timestamp": 1773925801,
+    "message_id": "3AC95C1FDFAD0E2A1B44",
+    "external_user_id": "60123456789@s.whatsapp.net",
+    "channel_account_id": 14,
+    "tenant_slug": "acme"
   },
   "status": "sent",
+  "stored": true,
   "event": "inbound_message",
   "channel_account_id": 14,
   "tenant_slug": "acme"
 }`;
+
+const sealedSendExample = `curl -X POST "https://api.connect.securifi.com.my/api/public/v1/messages/send" \\
+  -H "Authorization: Bearer sc_live_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "to": "60123456789",
+    "sealed_message": {
+      "v": 1,
+      "ctx": "message-transmit",
+      "n": "<base64 nonce>",
+      "ct": "<base64 ciphertext>",
+      "recipients": [ { "kid": "...", "epk": "...", "wn": "...", "k": "..." } ]
+    }
+  }'`;
 
 function CodeBlock({ children }: { children: string }) {
   return (
@@ -221,6 +252,47 @@ export default function DocsPage() {
         </Section>
 
         <Section
+          title="Message Privacy"
+          description="Conversations are private by default, so message bodies you read back are encrypted."
+        >
+          <div className="space-y-2 text-sm text-slate-300">
+            <p>
+              A workspace holds reader keys that Securifi Connect cannot open. Message bodies are
+              sealed to those keys before they are stored, so what you read back through the API is
+              an envelope rather than words.
+            </p>
+            <p>
+              On every message object, branch on{" "}
+              <code className="font-mono text-slate-100">encrypted</code> — not on{" "}
+              <code className="font-mono text-slate-100">body</code> being blank, because a genuinely
+              empty message is blank too. When{" "}
+              <code className="font-mono text-slate-100">encrypted</code> is true,{" "}
+              <code className="font-mono text-slate-100">body</code> is an empty string and the
+              content is in <code className="font-mono text-slate-100">sealed_body</code>, openable
+              only with the private half of a key you registered.
+            </p>
+            <p>
+              <code className="font-mono text-slate-100">POST /api/public/v1/keys</code> registers a
+              reader key for your integration, so sealed messages are readable by your app.{" "}
+              <code className="font-mono text-slate-100">GET /api/public/v1/encryption_key</code>{" "}
+              returns the engine public key you seal outbound messages to.
+            </p>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-white">Sending words we cannot read</p>
+            <CodeBlock>{sealedSendExample}</CodeBlock>
+          </div>
+          <p className="text-sm text-slate-400">
+            Sending plain <code className="font-mono text-slate-100">message</code> instead is still
+            supported, but it marks that conversation{" "}
+            <code className="font-mono text-slate-100">server_readable</code>, because we have stored
+            words we can read. Add <code className="font-mono text-slate-100">&quot;store&quot;: false</code>{" "}
+            to send without keeping any copy at all — the message is delivered and nothing of its
+            content remains.
+          </p>
+        </Section>
+
+        <Section
           title="Common Errors"
           description="These are the main API-level failures returned directly by the public endpoints."
         >
@@ -259,6 +331,17 @@ export default function DocsPage() {
             <p className="mb-2 text-sm font-medium text-white">Inbound webhook example</p>
             <CodeBlock>{webhookInboundExample}</CodeBlock>
           </div>
+          <p className="text-sm text-slate-400">
+            One contact can reach you under two addresses:{" "}
+            <code className="font-mono text-slate-100">payload.from</code> is whatever WhatsApp used,
+            which may be a LID such as{" "}
+            <code className="font-mono text-slate-100">182691014144082@lid</code> and contains no
+            phone number, while{" "}
+            <code className="font-mono text-slate-100">payload.external_user_id</code> is the same
+            person&apos;s number and is what the conversation is keyed on. Match contacts on{" "}
+            <code className="font-mono text-slate-100">external_user_id</code>; matching on{" "}
+            <code className="font-mono text-slate-100">from</code> splits one person into two.
+          </p>
           <p className="text-sm text-slate-400">
             Failed webhook deliveries are retried automatically with backoff and can also be replayed from the channel Developer page.
           </p>

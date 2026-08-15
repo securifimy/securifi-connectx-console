@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { createElement } from "react";
 import {
   fetchDocs,
   flattenText,
@@ -12,6 +13,8 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 function doc(slug: string, title: string, markdown: string): DocDocument {
@@ -49,6 +52,21 @@ describe("headingId", () => {
     expect(headingId("webhooks", "5. `store: false` — send it, keep nothing"))
       .toBe("webhooks--5-store-false-send-it-keep-nothing");
   });
+
+  // The TOC slugifies raw markdown; the page slugifies flattenText of parsed
+  // children. A heading containing a link diverges between the two unless
+  // slugify strips the link syntax down to its text first: raw
+  // `## See [privacy](public-api-privacy.md)` vs. a rendered `a` whose
+  // children are just "privacy".
+  it("agrees with the rendered id for a heading containing a link", () => {
+    const fromMarkdown = headingId("public-api", "See [privacy](public-api-privacy.md)");
+    const fromChildren = headingId(
+      "public-api",
+      flattenText(["See ", createElement("a", { href: "public-api-privacy.md" }, "privacy")]),
+    );
+
+    expect(fromChildren).toBe(fromMarkdown);
+  });
 });
 
 describe("rewriteDocHref", () => {
@@ -72,15 +90,20 @@ describe("rewriteDocHref", () => {
 describe("flattenText", () => {
   // The heading override receives React elements, not strings. String() on one
   // gives "[object Object]" — and eight `### `4xx …`` headings would then all
-  // share id "public-api--object-object".
+  // share id "public-api--object-object". Fixtures are real elements built
+  // with createElement, the same shape react-markdown actually passes —
+  // plain `{ props: { children } }` objects exercised a dead duck-typed
+  // branch that production code never hits.
   it("reads through an element child instead of stringifying it", () => {
-    const children = ["5. ", { props: { children: "store: false" } }, " — keep nothing"] as any;
+    const children = ["5. ", createElement("code", null, "store: false"), " — keep nothing"];
 
     expect(flattenText(children)).toBe("5. store: false — keep nothing");
   });
 
   it("recurses through nested elements", () => {
-    expect(flattenText({ props: { children: ["a", { props: { children: "b" } }] } } as any)).toBe("ab");
+    const nested = createElement("strong", null, "a", createElement("code", null, "b"));
+
+    expect(flattenText(nested)).toBe("ab");
   });
 
   it("survives null, booleans and numbers", () => {
@@ -93,7 +116,7 @@ describe("flattenText", () => {
     const fromMarkdown = headingId("public-api", "5. `store: false` — keep nothing");
     const fromChildren = headingId(
       "public-api",
-      flattenText(["5. ", { props: { children: "store: false" } }, " — keep nothing"] as any),
+      flattenText(["5. ", createElement("code", null, "store: false"), " — keep nothing"]),
     );
 
     expect(fromChildren).toBe(fromMarkdown);
@@ -105,12 +128,14 @@ describe("fetchDocs", () => {
   // depends on it returning null rather than throwing.
   it("returns null when the api cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("ECONNREFUSED")));
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(fetchDocs()).resolves.toBeNull();
   });
 
   it("returns null on a non-ok response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    vi.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(fetchDocs()).resolves.toBeNull();
   });
@@ -120,6 +145,35 @@ describe("fetchDocs", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ documents }) }));
 
     await expect(fetchDocs()).resolves.toEqual(documents);
+  });
+
+  // A failure that is only ever caught and discarded is indistinguishable
+  // from one that never happened. Both failure paths must log.
+  it("logs the response status on a non-ok response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await fetchDocs();
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("503"));
+  });
+
+  // apiBase() throws a deliberate, specific error when API_INTERNAL_URL is
+  // unset in production — but that throw happens inside fetchDocs's try, so
+  // an unlogged catch would swallow the one message that explains why a
+  // production box serves "temporarily unavailable" forever. This test is
+  // the point of the finding: without it, the silence comes back unnoticed.
+  it("logs the production guard's message when API_INTERNAL_URL is unset", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("API_INTERNAL_URL", "");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(fetchDocs()).resolves.toBeNull();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ message: expect.stringContaining("API_INTERNAL_URL") }),
+    );
   });
 });
 

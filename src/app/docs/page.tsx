@@ -99,7 +99,7 @@ export default async function DocsPage() {
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="space-y-3">
           <p className="text-xs uppercase tracking-[0.2em] text-blue-400">Docs</p>
-          <h1 className="text-3xl font-semibold text-white">WhatsApp public API</h1>
+          <h1 className="text-3xl font-semibold text-white">API guide</h1>
         </div>
 
         {docs === null ? (

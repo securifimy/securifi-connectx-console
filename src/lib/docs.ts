@@ -42,15 +42,25 @@ export async function fetchDocs(): Promise<DocDocument[] | null> {
   try {
     // The explicit revalidate is load-bearing: without it Next 16 does not
     // cache at runtime, and this cache is what keeps /docs serving while the
-    // api restarts.
+    // api restarts. The abort timeout keeps a slow api from hanging the
+    // render up to undici's 300s default instead of falling back.
     const res = await fetch(`${apiBase()}/api/public/v1/docs`, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(5000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error(`[docs] fetch failed, rendering fallback: status ${res.status}`);
+      return null;
+    }
     const body = (await res.json()) as { documents: DocDocument[] };
     return body.documents ?? null;
-  } catch {
+  } catch (err) {
     // An unreachable api must not throw here: the page renders a fallback.
+    // But it must not do so silently either — this is also where apiBase()'s
+    // production guard error lands, and an unlogged throw there means a box
+    // missing API_INTERNAL_URL serves "temporarily unavailable" forever with
+    // nothing in the log to say why.
+    console.error("[docs] fetch failed, rendering fallback:", err);
     return null;
   }
 }
@@ -61,6 +71,10 @@ export function stripLeadingH1(markdown: string): string {
 
 function slugify(text: string): string {
   return text
+    // Markdown link syntax to its text first: raw `## See [privacy](x.md)`
+    // and the rendered heading (whose `a` becomes just its link text) must
+    // slugify to the same id, or the table of contents points at nothing.
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
     .toLowerCase()
     .replace(/`/g, "")
     .replace(/[^a-z0-9]+/g, "-")
@@ -80,9 +94,6 @@ export function flattenText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(flattenText).join("");
   if (isValidElement(node)) return flattenText((node.props as { children?: ReactNode }).children);
-  if (typeof node === "object" && node !== null && "props" in node) {
-    return flattenText((node as { props?: { children?: ReactNode } }).props?.children);
-  }
   return "";
 }
 

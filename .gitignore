@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Local dev CA cert, machine-specific — not source.
 caddy-local-root.crt
+
+# Scratch workspace for subagent-driven execution (ledger, briefs, review packages).
+.superpowers/
